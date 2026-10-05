@@ -31,22 +31,29 @@ class ControlCenter(private val a: Activity) : FrameLayout(a) {
 
     init {
         visibility = View.GONE; isClickable = true
-        setBackgroundColor(Color.argb(82, 0, 0, 0)); setOnClickListener { close() }
+        setBackgroundColor(Color.argb(72, 0, 0, 0)); setOnClickListener { close() }
         val r = dp(28).toFloat()
         panel.background = GradientDrawable().apply {
-            setColor(Color.argb(218, 28, 29, 35))
-            setStroke(dp(1), Color.argb(55, 255, 255, 255))
-            cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r)
+            // Phong cách control center OEM: card kính tối, bo tròn, không sao chép UI độc quyền.
+            setColor(Color.argb(202, 24, 25, 31))
+            setStroke(dp(1), Color.argb(65, 255, 255, 255))
+            cornerRadius = r
         }
-        panel.elevation = dp(10).toFloat()
-        addView(panel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.TOP))
+        panel.elevation = dp(12).toFloat()
+        addView(panel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.TOP).apply {
+            leftMargin = dp(8); rightMargin = dp(8); topMargin = dp(8)
+        })
     }
 
     private fun label(t: String, sp: Float = 12f) = TextView(a).apply { text = t; setTextColor(Color.WHITE); textSize = sp }
 
     private fun tile(t: String, click: (TextView) -> Unit) = TextView(a).apply {
         text = t; setTextColor(Color.WHITE); textSize = 12f; gravity = Gravity.CENTER
-        background = GradientDrawable().apply { setColor(Color.argb(40, 255, 255, 255)); cornerRadius = dp(20).toFloat() }
+        background = GradientDrawable().apply {
+            setColor(Color.argb(48, 255, 255, 255))
+            setStroke(dp(1), Color.argb(28, 255, 255, 255))
+            cornerRadius = dp(20).toFloat()
+        }
         setOnClickListener { try { click(this) } catch (_: Exception) {} }
     }
 

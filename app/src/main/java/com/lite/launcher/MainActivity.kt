@@ -96,7 +96,7 @@ class MainActivity : Activity() {
         host = AppWidgetHost(this, 1024)
 
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            View.SYSTEM_UI_FLAG_LAYOUT_FULL_SCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
         root = FrameLayout(this)
         root.setOnApplyWindowInsetsListener { v, i ->
             v.setPadding(0, i.systemWindowInsetTop, 0, i.systemWindowInsetBottom); i

@@ -5,6 +5,7 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import kotlin.math.abs
 
@@ -48,12 +49,12 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
         panel.background = glass(238, 28f)
         panel.elevation = dp(14).toFloat()
 
-        addView(panel, LayoutParams(dp(318), MATCH_PARENT, Gravity.END).apply {
+        addView(panel, LayoutParams(dp(318), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END).apply {
             topMargin = dp(10); bottomMargin = dp(10)
-            marginEnd = -dp(318)
+            setMargins(0, dp(10), -dp(318), dp(10))
         })
         addView(handle, LayoutParams(dp(30), dp(70), Gravity.END or Gravity.CENTER_VERTICAL).apply {
-            marginEnd = 0
+            setMargins(0, 0, 0, 0)
         })
 
         handle.setOnTouchListener { _, e -> edgeTouch(e) }
@@ -111,7 +112,7 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
         build()
         val p = panel.layoutParams
         p.width = dp(318); p.height = MATCH_PARENT
-        p.marginEnd = 0
+        p.setMargins(0, dp(10), 0, dp(10))
         panel.layoutParams = p
         panel.translationX = dp(318).toFloat()
         handle.text = "›"
@@ -126,7 +127,7 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
         panel.animate().translationX(dp(318).toFloat()).setDuration(130)
             .withEndAction {
                 val p = panel.layoutParams
-                p.marginEnd = -dp(318)
+                p.setMargins(0, dp(10), -dp(318), dp(10))
                 panel.layoutParams = p
             }.start()
     }
@@ -194,7 +195,7 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
 
         panel.addView(Space(a), LinearLayout.LayoutParams(1, dp(8)))
         panel.addView(row("🔎", "Tìm kiếm", "Mở tìm kiếm ứng dụng") { onSearch(); close() },
-            LinearLayout.LayoutParams(MATCH, dp(66)).apply { bottomMargin = dp(7) })
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
         panel.addView(row("🎛️", "Trung tâm điều khiển", "Wi‑Fi, Bluetooth, sáng, âm lượng") { onControlCenter(); close() },
             LinearLayout.LayoutParams(MATCH, dp(66)).apply { bottomMargin = dp(7) })
         panel.addView(row("🎮", "Game Booster", "Công cụ nổi khi chơi game") { onGameBooster(); close() },

@@ -5,13 +5,77 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: 17 }
+        with:
+          distribution: temurin
+          java-version: 17
+
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: 8.7 }
-      - run: unzip -q LiteLauncher.zip
-      - run: cd LiteLauncher && gradle assembleRelease --no-daemon
+        with:
+          gradle-version: 8.7
+
+      - name: Extract project
+        run: unzip -q LiteLauncher.zip
+
+      - name: Apply Kotlin compatibility fixes
+        working-directory: LiteLauncher
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          control = Path("app/src/main/java/com/lite/launcher/ControlCenter.kt")
+          s = control.read_text()
+          old = '''        val id = cam ?: cm.cameraIdList.firstOrNull { cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }.also { cam = it } ?: return
+                  torchOn = !torchOn; cm.setTorchMode(id, torchOn)'''
+          new = '''        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->
+              cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+          } ?: return
+          cam = id
+          torchOn = !torchOn
+          cm.setTorchMode(id, torchOn)'''
+          if old not in s:
+              raise SystemExit("ControlCenter.kt: expected torch code was not found")
+          control.write_text(s.replace(old, new, 1))
+
+          island = Path("app/src/main/java/com/lite/launcher/IslandService.kt")
+          s = island.read_text()
+          old = '''            if (n.category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post'''
+          new = '''            val category = n.category
+                      if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post'''
+          if old not in s:
+              raise SystemExit("IslandService.kt: expected notification category code was not found")
+          island.write_text(s.replace(old, new, 1))
+
+          main = Path("app/src/main/java/com/lite/launcher/MainActivity.kt")
+          s = main.read_text()
+          old = '''    private fun pageAdapter(count: () -> Int, bind: (Int) -> View) = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {'''
+          new = '''    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {'''
+          if old not in s:
+              raise SystemExit("MainActivity.kt: expected pageAdapter declaration was not found")
+          s = s.replace(old, new, 1)
+          old = '''        gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START'''
+          new = '''        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)'''
+          if old not in s:
+              raise SystemExit("MainActivity.kt: expected clock gravity expression was not found")
+          main.write_text(s.replace(old, new, 1))
+          PY
+
+      - name: Build release APK
+        working-directory: LiteLauncher
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Package fixed source
+        run: |
+          cd LiteLauncher
+          zip -qr ../LiteLauncher-fixed.zip .
+
       - uses: actions/upload-artifact@v4
         with:
           name: apk
           path: LiteLauncher/app/build/outputs/apk/release/*.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LiteLauncher-fixed-source
+          path: LiteLauncher-fixed.zip

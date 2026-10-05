@@ -199,11 +199,11 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
         panel.addView(row("🎛️", "Trung tâm điều khiển", "Wi‑Fi, Bluetooth, sáng, âm lượng") { onControlCenter(); close() },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
         panel.addView(row("🎮", "Game Booster", "Công cụ nổi khi chơi game") { onGameBooster(); close() },
-            LinearLayout.LayoutParams(MATCH, dp(66)).apply { bottomMargin = dp(7) })
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
         panel.addView(row("⚡", "Dọn RAM", "Dọn các tiến trình nền không cần thiết") { onClean() },
-            LinearLayout.LayoutParams(MATCH, dp(66)).apply { bottomMargin = dp(7) })
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
         panel.addView(row("🌄", "Hình nền", "Đổi hình nền hệ thống") { onWallpaper(); close() },
-            LinearLayout.LayoutParams(MATCH, dp(66)).apply { bottomMargin = dp(7) })
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
 
         panel.addView(TextView(a).apply {
             text = "Vuốt từ mép phải sang trái để mở • Vuốt panel sang phải để đóng"

@@ -861,9 +861,9 @@ class MainActivity : Activity() {
 
     private fun openCC() { closeDrawer(); closeGameBooster(); cc.open(recentApps(), st, lite, root.paddingTop, hasUsage()) }
 
-    private fun openGameCenter() { closeDrawer(); cc.close(); gameBooster.open(apps, st, lite) }
+    private fun openGameBooster() { closeDrawer(); cc.close(); gameBooster.open(apps, st, lite) }
 
-    private fun closeGameCenter() { if (::gameCenter.isInitialized) gameBooster.close() }
+    private fun closeGameBooster() { if (::gameBooster.isInitialized) gameBooster.close() }
 
     private fun cleanRam() {
         val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -920,7 +920,7 @@ class MainActivity : Activity() {
     override fun dispatchTouchEvent(e: MotionEvent): Boolean {
         // Ngăn kéo đang mở: vuốt xuống để kéo cả ngăn kéo theo ngón tay.
         // Thả đủ xa -> đóng; kéo chưa đủ -> tự trượt về vị trí mở.
-        if (drawer.visibility == View.VISIBLE && !cc.isOpen && !gameCenter.isOpen) {
+        if (drawer.visibility == View.VISIBLE && !cc.isOpen && !gameBooster.isOpen) {
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     drawerTouchStartY = e.rawY
@@ -993,7 +993,7 @@ class MainActivity : Activity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (gameCenter.isOpen) gameCenter.close()
+        if (gameBooster.isOpen) gameBooster.close()
         else if (cc.isOpen) cc.close()
         else if (drawer.visibility == View.VISIBLE) closeDrawer()
         else pager.smoothScrollToPosition(0)

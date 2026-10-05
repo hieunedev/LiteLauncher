@@ -1,6 +1,5 @@
 package com.lite.launcher
 
-import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -16,8 +15,8 @@ import android.view.Gravity
 import android.view.View
 import android.widget.*
 
-/** Trung tâm điều khiển trong launcher (không thay được bảng cài đặt nhanh của hệ thống). Dựng lại mỗi lần mở -> không giữ RAM. */
-class ControlCenter(private val a: Activity) : FrameLayout(a) {
+/** MIUI-inspired quick settings panel. It can also be hosted by the global overlay service. */
+class ControlCenter(private val a: Context) : FrameLayout(a) {
     var onClean: () -> Unit = {}
     var onLaunch: (App) -> Unit = {}
     private val d = a.resources.displayMetrics.density
@@ -28,56 +27,63 @@ class ControlCenter(private val a: Activity) : FrameLayout(a) {
     val isOpen get() = visibility == View.VISIBLE
 
     private fun dp(v: Int) = (v * d + .5f).toInt()
+    private fun launch(i: Intent) { i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); a.startActivity(i) }
+    private fun radius(v: Int) = v * d
 
     init {
-        visibility = View.GONE; isClickable = true
-        setBackgroundColor(Color.argb(72, 0, 0, 0)); setOnClickListener { close() }
-        val r = dp(28).toFloat()
+        visibility = View.GONE
+        isClickable = true
+        setBackgroundColor(Color.argb(118, 0, 0, 0))
+        setOnClickListener { close() }
         panel.background = GradientDrawable().apply {
-            // Phong cách control center OEM: card kính tối, bo tròn, không sao chép UI độc quyền.
-            setColor(Color.argb(202, 24, 25, 31))
-            setStroke(dp(1), Color.argb(65, 255, 255, 255))
-            cornerRadius = r
+            setColor(Color.argb(222, 24, 25, 30))
+            setStroke(dp(1), Color.argb(48, 255, 255, 255))
+            cornerRadius = radius(30)
         }
-        panel.elevation = dp(12).toFloat()
+        panel.elevation = dp(16).toFloat()
         addView(panel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.TOP).apply {
-            leftMargin = dp(8); rightMargin = dp(8); topMargin = dp(8)
+            leftMargin = dp(10); rightMargin = dp(10); topMargin = dp(8)
         })
     }
 
-    private fun label(t: String, sp: Float = 12f) = TextView(a).apply { text = t; setTextColor(Color.WHITE); textSize = sp }
+    private fun label(t: String, sp: Float = 12f) = TextView(a).apply {
+        text = t; setTextColor(Color.WHITE); textSize = sp
+    }
 
-    private fun tile(t: String, click: (TextView) -> Unit) = TextView(a).apply {
-        text = t; setTextColor(Color.WHITE); textSize = 12f; gravity = Gravity.CENTER
-        background = GradientDrawable().apply {
-            setColor(Color.argb(48, 255, 255, 255))
-            setStroke(dp(1), Color.argb(28, 255, 255, 255))
-            cornerRadius = dp(20).toFloat()
+    private fun card(bg: Int = Color.argb(48, 255, 255, 255), r: Int = 22) = GradientDrawable().apply {
+        setColor(bg); setStroke(dp(1), Color.argb(24, 255, 255, 255)); cornerRadius = radius(r)
+    }
+
+    private fun tile(icon: String, title: String, active: Boolean = false, click: (TextView) -> Unit) =
+        LinearLayout(a).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; isClickable = true
+            background = card(if (active) Color.argb(205, 48, 116, 235) else Color.argb(52, 255, 255, 255), 22)
+            addView(TextView(a).apply { text = icon; textSize = 22f; gravity = Gravity.CENTER }, LinearLayout.LayoutParams(MATCH_PARENT, dp(28)))
+            addView(TextView(a).apply { text = title; textSize = 11f; setTextColor(Color.WHITE); gravity = Gravity.CENTER }, LinearLayout.LayoutParams(MATCH_PARENT, dp(25)))
+            setOnClickListener { try { click(this.findViewById<TextView>(android.R.id.text1) ?: this.getChildAt(1) as TextView) } catch (_: Exception) {} }
         }
-        setOnClickListener { try { click(this) } catch (_: Exception) {} }
+
+    private fun quick(icon: String, title: String, click: () -> Unit) = TextView(a).apply {
+        text = "$icon\n$title"; gravity = Gravity.CENTER; textSize = 11f; setTextColor(Color.WHITE)
+        background = card(Color.argb(48, 255, 255, 255), 20)
+        setOnClickListener { try { click() } catch (_: Exception) {} }
     }
 
-    private fun row(vararg v: View) = LinearLayout(a).apply {
-        v.forEach { addView(it, LinearLayout.LayoutParams(0, dp(66), 1f).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) }) }
+    private fun row(vararg v: View, h: Int = 76) = LinearLayout(a).apply {
+        v.forEach { addView(it, LinearLayout.LayoutParams(0, dp(h), 1f).apply { setMargins(dp(4), dp(4), dp(4), dp(4)) }) }
     }
 
-    private fun go(action: String) = a.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    private fun go(action: String) = launch(Intent(action))
 
-    private fun torch(t: TextView) {
+    private fun torch() {
         val cm = a.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->
-            cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-        } ?: return
-        cam = id
-        torchOn = !torchOn
-        cm.setTorchMode(id, torchOn)
-        (t.background as GradientDrawable).setColor(if (torchOn) Color.argb(210, 255, 200, 60) else Color.argb(40, 255, 255, 255))
-        t.setTextColor(if (torchOn) Color.BLACK else Color.WHITE)
+        val id = cam ?: cm.cameraIdList.firstOrNull { x -> cm.getCameraCharacteristics(x).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true } ?: return
+        cam = id; torchOn = !torchOn; cm.setTorchMode(id, torchOn)
     }
 
     private fun slider(title: String, max: Int, cur: Int, onStart: () -> Unit, onChange: (Int) -> Unit) = LinearLayout(a).apply {
-        orientation = LinearLayout.VERTICAL; setPadding(dp(6), dp(6), dp(6), 0)
-        addView(label(title))
+        orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(4), dp(8), 0)
+        addView(label(title, 11f))
         addView(SeekBar(a).apply {
             this.max = max; progress = cur
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -96,58 +102,64 @@ class ControlCenter(private val a: Activity) : FrameLayout(a) {
     fun refreshRam() { ramTv?.text = ramInfo() }
 
     fun open(recents: List<App>, st: Style, lite: Boolean, topInset: Int, usageOk: Boolean) {
-        panel.removeAllViews(); panel.setPadding(dp(14), topInset + dp(12), dp(14), dp(16))
-        panel.addView(label("◈  Trung tâm điều khiển", 20f).apply { setPadding(dp(4), 0, 0, dp(8)) })
+        panel.removeAllViews()
+        val wide = resources.displayMetrics.widthPixels > resources.displayMetrics.heightPixels
+        panel.setPadding(dp(14), topInset + dp(12), dp(14), dp(14))
+
+        panel.addView(LinearLayout(a).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(label("Trung tâm điều khiển", 20f), LinearLayout.LayoutParams(0, dp(42), 1f))
+            addView(label("⌄", 25f).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(42), dp(42)))
+        })
+
+        // MIUI-style: connectivity 2x2 on the left, media card on the right.
+        val connectivity = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
+        connectivity.addView(row(
+            quick("📶", "Wi-Fi") { if (Build.VERSION.SDK_INT >= 29) go(Settings.Panel.ACTION_INTERNET_CONNECTIVITY) else go(Settings.ACTION_WIFI_SETTINGS) },
+            quick("📱", "Dữ liệu") { if (Build.VERSION.SDK_INT >= 29) go(Settings.Panel.ACTION_INTERNET_CONNECTIVITY) else go(Settings.ACTION_WIRELESS_SETTINGS) }))
+        connectivity.addView(row(
+            quick("🔵", "Bluetooth") { go(Settings.ACTION_BLUETOOTH_SETTINGS) },
+            quick("✈️", "Máy bay") { go(Settings.ACTION_AIRPLANE_MODE_SETTINGS) }))
+
+        val media = LinearLayout(a).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(14), dp(10), dp(14), dp(10)); background = card(Color.argb(48,255,255,255), 24)
+            addView(label("♪  Không phát", 13f)); addView(label("‹    ▶    ›", 26f).apply { gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(4)) })
+            addView(label("Âm thanh đa phương tiện", 10f).apply { setTextColor(Color.argb(175,255,255,255)); gravity = Gravity.CENTER })
+        }
+        val top = LinearLayout(a).apply { orientation = if (wide) LinearLayout.HORIZONTAL else LinearLayout.HORIZONTAL }
+        top.addView(connectivity, LinearLayout.LayoutParams(0, if (wide) dp(160) else dp(160), 1.45f))
+        top.addView(media, LinearLayout.LayoutParams(0, dp(160), 1f).apply { setMargins(dp(6), dp(4), dp(4), dp(4)) })
+        panel.addView(top)
+
         panel.addView(row(
-            tile("📶\nInternet") { if (Build.VERSION.SDK_INT >= 29) go(Settings.Panel.ACTION_INTERNET_CONNECTIVITY) else go(Settings.ACTION_WIFI_SETTINGS) },
-            tile("🔵\nBluetooth") { go(Settings.ACTION_BLUETOOTH_SETTINGS) },
-            tile("🔦\nĐèn pin") { torch(it) }))
+            quick("🔦", "Đèn pin") { torch() },
+            quick("🔕", "Im lặng") { go(Settings.ACTION_SOUND_SETTINGS) },
+            quick("⚙️", "Cài đặt") { go(Settings.ACTION_SETTINGS) },
+            h = 72))
         panel.addView(row(
-            tile("✈️\nMáy bay") { go(Settings.ACTION_AIRPLANE_MODE_SETTINGS) },
-            tile("🔊\nÂm thanh") { if (Build.VERSION.SDK_INT >= 29) go(Settings.Panel.ACTION_VOLUME) else go(Settings.ACTION_SOUND_SETTINGS) },
-            tile("⚙️\nCài đặt") { go(Settings.ACTION_SETTINGS) }))
+            quick("📸", "Camera") { launch(Intent("android.media.action.STILL_IMAGE_CAMERA")) },
+            quick("📍", "Vị trí") { go(Settings.ACTION_LOCATION_SOURCE_SETTINGS) },
+            quick("🔒", "Khóa màn") { try { go(Settings.ACTION_SECURITY_SETTINGS) } catch (_: Exception) {} },
+            h = 72))
 
         val cr = a.contentResolver
-        panel.addView(slider("☀️ Độ sáng", 255, Settings.System.getInt(cr, Settings.System.SCREEN_BRIGHTNESS, 128),
-            { if (!Settings.System.canWrite(a)) a.startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:${a.packageName}"))) },
-            { p ->
-                if (Settings.System.canWrite(a)) {
-                    Settings.System.putInt(cr, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
-                    Settings.System.putInt(cr, Settings.System.SCREEN_BRIGHTNESS, p.coerceAtLeast(1))
-                }
-            }))
+        panel.addView(slider("☀  Độ sáng", 255, Settings.System.getInt(cr, Settings.System.SCREEN_BRIGHTNESS, 128),
+            { if (!Settings.System.canWrite(a)) launch(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:${a.packageName}"))) },
+            { p -> if (Settings.System.canWrite(a)) { Settings.System.putInt(cr, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL); Settings.System.putInt(cr, Settings.System.SCREEN_BRIGHTNESS, p.coerceAtLeast(1)) } }))
+
         val am = a.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        panel.addView(slider("🎵 Âm lượng", am.getStreamMaxVolume(AudioManager.STREAM_MUSIC), am.getStreamVolume(AudioManager.STREAM_MUSIC),
-            {}, { p -> am.setStreamVolume(AudioManager.STREAM_MUSIC, p, 0) }))
+        panel.addView(slider("🔊  Âm lượng", am.getStreamMaxVolume(AudioManager.STREAM_MUSIC), am.getStreamVolume(AudioManager.STREAM_MUSIC), {}, { p -> am.setStreamVolume(AudioManager.STREAM_MUSIC, p, 0) }))
 
-        // --- Đa nhiệm nhẹ: dọn RAM + app dùng gần đây ---
-        val info = LinearLayout(a).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(6), dp(14), dp(6), dp(4)) }
-        ramTv = label(ramInfo()); info.addView(ramTv, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-        info.addView(TextView(a).apply {
-            text = "Dọn RAM"; setTextColor(Color.WHITE); textSize = 12f; setPadding(dp(16), dp(8), dp(16), dp(8))
-            background = GradientDrawable().apply { setColor(Color.parseColor("#2E7D32")); cornerRadius = dp(18).toFloat() }
-            setOnClickListener { onClean() }
-        })
-        panel.addView(info)
-        panel.addView(label("Đa nhiệm gần đây").apply { setPadding(dp(6), dp(8), 0, dp(4)) })
-        if (!usageOk) panel.addView(label("Cấp quyền xem app gần đây ›").apply {
-            setPadding(dp(6), dp(8), 0, dp(8)); setTextColor(Color.parseColor("#82B1FF"))
-            setOnClickListener { go(Settings.ACTION_USAGE_ACCESS_SETTINGS) }
-        })
-        else if (recents.isEmpty()) panel.addView(label("Chưa có app nào").apply { setPadding(dp(6), dp(8), 0, dp(8)) })
-        else panel.addView(HorizontalScrollView(a).apply {
-            isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER
-            addView(LinearLayout(a).apply {
-                recents.forEach { app ->
-                    addView(IconView(a, st, true, lite).apply { set(app.icon, app.label); setOnClickListener { onLaunch(app) } },
-                        LinearLayout.LayoutParams(dp(72), dp(86)))
-                }
+        if (recents.isNotEmpty()) {
+            panel.addView(label("Ứng dụng gần đây", 11f).apply { setPadding(dp(6), dp(8), 0, dp(3)) })
+            panel.addView(HorizontalScrollView(a).apply {
+                isHorizontalScrollBarEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER
+                addView(LinearLayout(a).apply { recents.take(6).forEach { app -> addView(IconView(a, st, true, lite).apply { set(app.icon, app.label); setOnClickListener { onLaunch(app) } }, LinearLayout.LayoutParams(dp(70), dp(78))) } })
             })
-        })
+        }
 
-        visibility = View.VISIBLE; alpha = 0f; panel.translationY = -dp(30).toFloat()
-        animate().alpha(1f).setDuration(150).start()
-        panel.animate().translationY(0f).setDuration(150).start()
+        visibility = View.VISIBLE; alpha = 0f; panel.translationY = -dp(35).toFloat()
+        animate().alpha(1f).setDuration(150).start(); panel.animate().translationY(0f).setDuration(170).start()
     }
 
     fun close() {

@@ -65,6 +65,7 @@ class MainActivity : Activity() {
     private lateinit var results: RecyclerView
     private lateinit var cc: ControlCenter
     private lateinit var gameBooster: GameBooster
+    private lateinit var oemSidebar: OemSidebar
 
     private var curPage = 0
     private var dragItem: Item? = null
@@ -156,6 +157,21 @@ class MainActivity : Activity() {
         root.addView(cc, FrameLayout.LayoutParams(MATCH, MATCH))
         gameBooster = GameBooster(this).apply { onLaunch = { a -> launch(a); closeGameBooster() }; onBoost = { cleanRam() } }
         root.addView(gameBooster, FrameLayout.LayoutParams(MATCH, MATCH))
+        oemSidebar = OemSidebar(this).apply {
+            onSearch = { closeDrawer(); openDrawer(true) }
+            onControlCenter = { openCC() }
+            onGameBooster = { openGameBooster() }
+            onClean = { cleanRam() }
+            onWallpaper = {
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
+            }
+            onClose = { close() }
+            appsProvider = { recentApps().ifEmpty { apps.take(6) } }
+        }
+        root.addView(oemSidebar, FrameLayout.LayoutParams(dp(30), MATCH).apply {
+            gravity = Gravity.END
+        })
+        oemSidebar.visibility = if (prefs.getBoolean("sidebar", true)) View.VISIBLE else View.GONE
         root.setOnDragListener { _, e -> onDrag(e) }
         setContentView(root)
         applyStyle()
@@ -171,6 +187,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         GameBoosterService.stop(this)
+        if (::oemSidebar.isInitialized) oemSidebar.close()
     }
     override fun onStop() { try { host.stopListening() } catch (_: Exception) {}; super.onStop() }
     override fun onDestroy() { unregisterReceiver(receiver); bg.shutdown(); super.onDestroy() }
@@ -689,12 +706,26 @@ class MainActivity : Activity() {
                 toast(if (drawerMode) "Đã bật Ngăn kéo" else "Đã về chế độ Chuẩn")
             },
             menuRow("🎛️", "Trung tâm điều khiển", "Điều khiển nhanh & đa nhiệm") { dialog.dismiss(); openCC() },
+            menuRow("📌", "Thanh bên thông minh", if (prefs.getBoolean("sidebar", true)) "Bật • Edge Panel / Magic Sidebar" else "Tắt") {
+                val on = !prefs.getBoolean("sidebar", true)
+                prefs.edit().putBoolean("sidebar", on).apply()
+                oemSidebar.visibility = if (on) View.VISIBLE else View.GONE
+                dialog.dismiss()
+                toast(if (on) "Đã bật Thanh bên thông minh" else "Đã tắt Thanh bên thông minh")
+            },
             menuRow("🏝️", "Đảo động", islandStatus()) { dialog.dismiss(); toggleIsland() } 
         )
 
         rows.forEach { row ->
             box.addView(row, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
         }
+
+        box.addView(menuRow("🪄", "Giao diện thích ứng", "Tự động lấy màu chủ đạo từ hình nền") {
+            prefs.edit().putBoolean("dynamicColor", !prefs.getBoolean("dynamicColor", true)).apply()
+            applyStyle()
+            dialog.dismiss()
+            toast(if (prefs.getBoolean("dynamicColor", true)) "Đã bật màu thích ứng" else "Đã tắt màu thích ứng")
+        }, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
 
         box.addView(menuRow("⚡", "Siêu nhẹ", if (lite) "Đang bật • giảm bóng & hiệu ứng" else "Đang tắt • hiệu ứng đầy đủ") {
             lite = !lite
@@ -823,6 +854,10 @@ class MainActivity : Activity() {
             }.show()
     }
 
+    internal fun currentStyle() = st
+    internal fun isLiteMode() = lite
+    internal fun launchFromSidebar(a: App) = launch(a)
+
     private fun applyStyle() {
         dock.background = if (st.dockAlpha > 0) GradientDrawable().apply {
             setColor(Color.argb(dockAlpha(), 255, 255, 255)); cornerRadius = dp(st.dockRadius).toFloat()
@@ -927,6 +962,7 @@ class MainActivity : Activity() {
     }
 
     private fun closeDrawer() {
+        if (::oemSidebar.isInitialized) oemSidebar.close()
         if (drawer.visibility != View.VISIBLE) return
         pullingDrawer = false
         (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(input.windowToken, 0)
@@ -944,6 +980,7 @@ class MainActivity : Activity() {
     }
 
     private fun launch(a: App) {
+        if (::oemSidebar.isInitialized) oemSidebar.close()
         try {
             startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setClassName(a.pkg, a.cls)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED))
@@ -979,9 +1016,9 @@ class MainActivity : Activity() {
             .mapNotNull { byPkg[it.packageName] }.distinctBy { it.pkg }.take(8)
     }
 
-    private fun openCC() { closeDrawer(); closeGameBooster(); cc.open(recentApps(), st, lite, root.paddingTop, hasUsage()) }
+    private fun openCC() { if (::oemSidebar.isInitialized) oemSidebar.close(); closeDrawer(); closeGameBooster(); cc.open(recentApps(), st, lite, root.paddingTop, hasUsage()) }
 
-    private fun openGameBooster() { closeDrawer(); cc.close(); gameBooster.open(apps, st, lite) }
+    private fun openGameBooster() { if (::oemSidebar.isInitialized) oemSidebar.close(); closeDrawer(); cc.close(); gameBooster.open(apps, st, lite) }
 
     private fun closeGameBooster() { if (::gameBooster.isInitialized) gameBooster.close() }
 
@@ -1110,7 +1147,8 @@ class MainActivity : Activity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (gameBooster.isOpen) gameBooster.close()
+        if (::oemSidebar.isInitialized && oemSidebar.isOpen()) oemSidebar.close()
+        else if (gameBooster.isOpen) gameBooster.close()
         else if (cc.isOpen) cc.close()
         else if (drawer.visibility == View.VISIBLE) closeDrawer()
         else pager.smoothScrollToPosition(0)

@@ -23,45 +23,44 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
-          def replace_once(path, old, new):
+          def patch(path, pattern, replacement):
               p = Path(path)
               s = p.read_text()
-              if new in s:
-                  return
-              if old not in s:
+              s2, n = re.subn(pattern, replacement, s, count=1, flags=re.MULTILINE)
+              if n == 0:
                   raise SystemExit(f"{path}: expected source pattern was not found")
-              p.write_text(s.replace(old, new, 1))
+              p.write_text(s2)
 
-          replace_once(
+          patch(
               "app/src/main/java/com/lite/launcher/ControlCenter.kt",
-              """        val id = cam ?: cm.cameraIdList.firstOrNull { cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }.also { cam = it } ?: return
-        torchOn = !torchOn; cm.setTorchMode(id, torchOn)""",
+              r"        val id = cam \\?: cm\\.cameraIdList\\.firstOrNull \\{ cm\\.getCameraCharacteristics\\(it\\)\\.get\\(CameraCharacteristics\\.FLASH_INFO_AVAILABLE\\) == true \\}\\.also \\{ cam = it \} \\?: return\\n        torchOn = !torchOn; cm\\.setTorchMode\\(id, torchOn\\)",
               """        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->
-              cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-          } ?: return
-          cam = id
-          torchOn = !torchOn
-          cm.setTorchMode(id, torchOn)"""
+            cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        } ?: return
+        cam = id
+        torchOn = !torchOn
+        cm.setTorchMode(id, torchOn)"""
           )
 
-          replace_once(
+          patch(
               "app/src/main/java/com/lite/launcher/IslandService.kt",
-              """            if (n.category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post""",
+              r"            if \\(n\\.category !in live \\|\\| \\(n\\.flags and Notification\\.FLAG_GROUP_SUMMARY\\) != 0\\) return@post",
               """            val category = n.category
-              if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post"""
+            if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post"""
           )
 
-          replace_once(
+          patch(
               "app/src/main/java/com/lite/launcher/MainActivity.kt",
-              """    private fun pageAdapter(count: () -> Int, bind: (Int) -> View) = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {""",
-              """    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {"""
+              r"    private fun pageAdapter\\(count: \\(\\) -> Int, bind: \\(Int\\) -> View\\) = object : RecyclerView\\.Adapter<RecyclerView\\.ViewHolder>\\(\\) \\{",
+              "    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {"
           )
 
-          replace_once(
+          patch(
               "app/src/main/java/com/lite/launcher/MainActivity.kt",
-              """        gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START""",
-              """        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)"""
+              r"        gravity = if \\(st\\.clockCenter\\) Gravity\\.CENTER else Gravity\\.CENTER_VERTICAL or Gravity\\.START",
+              "        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)"
           )
           PY
 

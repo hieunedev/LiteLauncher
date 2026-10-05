@@ -79,6 +79,9 @@ jobs:
                   if "private fun pageAdapter(count:" in line and ": RecyclerView.Adapter<RecyclerView.ViewHolder>" not in line:
                       out.append("    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {")
                       changed = True
+                  elif "SYSTEM_UI_FLAG_LAYOUT_FULL_SCREEN" in line:
+                      out.append(line.replace("SYSTEM_UI_FLAG_LAYOUT_FULL_SCREEN", "SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN"))
+                      changed = True
                   elif "gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START" in line:
                       out.append("        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)")
                       changed = True

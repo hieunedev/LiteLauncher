@@ -31,24 +31,37 @@ class IslandService : NotificationListenerService() {
     private var text: TextView? = null
     private var curKey: String? = null
     private var curSbn: StatusBarNotification? = null
-    private val live = setOf("call", "transport", "alarm", "msg", "navigation", "progress", "stopwatch", "reminder")
+    private val live = setOf("call", "transport", "alarm", "msg", "navigation", "progress", "stopwatch", "reminder", "service", "status", "event")
     private val collapse = Runnable { collapseNow() }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density + .5f).toInt()
     private fun enabled() = getSharedPreferences("launcher", 0).getBoolean("island", false) && Settings.canDrawOverlays(this)
 
-    override fun onNotificationPosted(sbn: StatusBarNotification) {
+    override fun onListenerConnected() {
+        super.onListenerConnected()
         ui.post {
-            if (!enabled() || sbn.packageName == packageName) return@post
-            val n = sbn.notification
-            val category = n.category
-            if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post
-            val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)
-            val body = n.extras.getCharSequence(Notification.EXTRA_TEXT)
-            if (title == null && body == null) return@post
-            curKey = sbn.key; curSbn = sbn
-            show(listOfNotNull(title, body).joinToString(": "), sbn)
+            if (!enabled()) return@post
+            activeNotifications?.sortedByDescending { it.postTime }?.firstOrNull()?.let { handleNotification(it) }
         }
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        ui.post { handleNotification(sbn) }
+    }
+
+    private fun handleNotification(sbn: StatusBarNotification) {
+        if (!enabled() || sbn.packageName == packageName) return
+        val n = sbn.notification
+        val category = n.category
+        val ongoing = (n.flags and Notification.FLAG_ONGOING_EVENT) != 0
+        if ((category == null || category !in live) && !ongoing) return
+        if ((n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return
+        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)
+        val body = n.extras.getCharSequence(Notification.EXTRA_TEXT)
+        if (title == null && body == null) return
+        curKey = sbn.key
+        curSbn = sbn
+        show(listOfNotNull(title, body).joinToString(": "), sbn)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {

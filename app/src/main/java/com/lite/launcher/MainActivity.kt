@@ -79,6 +79,11 @@ class MainActivity : Activity() {
     }
 
     private fun dp(v: Int) = (v * d + .5f).toInt()
+    private fun iconSizePx() = prefs.getInt("iconSize", st.icon).coerceIn(40, 72)
+    private fun labelsOn() = prefs.getBoolean("labels", st.label)
+    private fun clockCenterOn() = prefs.getBoolean("clockCenter", st.clockCenter)
+    private fun clockSp() = prefs.getInt("clockSp", st.clockSp.toInt()).coerceIn(28, 72).toFloat()
+    private fun dockAlpha() = prefs.getInt("dockAlpha", st.dockAlpha).coerceIn(0, 90)
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
     private fun colsOf(p: Int) = if (p < 0) 4 else st.cols
     private fun rowsOf(p: Int) = if (p < 0) 1 else st.rows
@@ -161,7 +166,7 @@ class MainActivity : Activity() {
 
     // ================= Dữ liệu & icon =================
     private fun load() {
-        val s = st; val px = dp(s.icon)
+        val s = st; val px = dp(iconSizePx())
         bg.execute {
             val pm = packageManager
             val q = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
@@ -303,8 +308,8 @@ class MainActivity : Activity() {
 
     private fun viewFor(m: Item): View? {
         val v: View = when (m.type) {
-            T_APP -> { val a = byId[m.key] ?: return null; iv(a.icon, a.label, st.label && m.page >= 0).also { it.setOnClickListener { launch(a) } } }
-            T_FOLDER -> iv(folderBmp(m), m.key, st.label && m.page >= 0).also { it.setOnClickListener { openFolder(m) } }
+            T_APP -> { val a = byId[m.key] ?: return null; iv(a.icon, a.label, labelsOn() && m.page >= 0).also { it.setOnClickListener { launch(a) } } }
+            T_FOLDER -> iv(folderBmp(m), m.key, labelsOn() && m.page >= 0).also { it.setOnClickListener { openFolder(m) } }
             T_WIDGET -> {
                 val id = m.key.toIntOrNull() ?: return null
                 val info = awm.getAppWidgetInfo(id) ?: return null
@@ -321,12 +326,12 @@ class MainActivity : Activity() {
 
     private fun clockView() = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)
+        gravity = if (clockCenterOn()) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)
         setPadding(dp(16), 0, dp(16), 0)
-        val g = if (st.clockCenter) Gravity.CENTER_HORIZONTAL else Gravity.START
+        val g = if (clockCenterOn()) Gravity.CENTER_HORIZONTAL else Gravity.START
         addView(TextClock(context).apply {
             format12Hour = "H:mm"; format24Hour = "H:mm"; gravity = g
-            setTextColor(Color.WHITE); setTextSize(TypedValue.COMPLEX_UNIT_SP, st.clockSp)
+            setTextColor(Color.WHITE); setTextSize(TypedValue.COMPLEX_UNIT_SP, clockSp())
             typeface = Typeface.create(st.font, Typeface.NORMAL)
             if (!lite) setShadowLayer(8f, 0f, 2f, Color.argb(100, 0, 0, 0))
         })
@@ -548,7 +553,7 @@ class MainActivity : Activity() {
     private fun dlg() = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
 
     private fun showMenu() {
-        val o = arrayOf("Thêm widget", "Kiểu giao diện: ${st.name}",
+        val o = arrayOf("Thêm widget", "Cá nhân hóa", "Kiểu giao diện: ${st.name}",
             "Chế độ: " + if (drawerMode) "Ngăn kéo (bấm để đổi sang Chuẩn)" else "Chuẩn (bấm để đổi sang Ngăn kéo)",
             "Trung tâm điều khiển & đa nhiệm",
             "Đảo động (Dynamic Island): " + if (prefs.getBoolean("island", false)) "Bật" else "Tắt",
@@ -556,26 +561,124 @@ class MainActivity : Activity() {
         dlg().setItems(o) { _, i ->
             when (i) {
                 0 -> pickWidget()
-                1 -> dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
+                1 -> showPersonalization()
+                2 -> dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
                     dd.dismiss(); st = STYLES[k]; prefs.edit().putInt("style", k).apply(); applyStyle(); load()
                 }.show()
-                2 -> {
+                3 -> {
                     drawerMode = !drawerMode; prefs.edit().putBoolean("drawer", drawerMode).apply()
                     if (drawerMode) items.removeAll { it.type == T_APP && it.page >= 0 }
                     refresh(); toast(if (drawerMode) "Đã bật Ngăn kéo: vuốt lên để mở" else "Đã về chế độ Chuẩn")
                 }
-                3 -> openCC()
-                4 -> toggleIsland()
-                5 -> { lite = !lite; prefs.edit().putBoolean("lite", lite).apply(); applyStyle(); refresh() }
-                6 -> startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
+                4 -> openCC()
+                5 -> toggleIsland()
+                6 -> { lite = !lite; prefs.edit().putBoolean("lite", lite).apply(); applyStyle(); refresh() }
+                7 -> startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
                 else -> { initLayout(); reflow(); refresh() }
             }
         }.show()
     }
 
+    private fun showPersonalization() {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(4), dp(20), 0)
+        }
+
+        box.addView(Button(this).apply {
+            text = "🎨 Kiểu giao diện: ${st.name}"
+            setOnClickListener {
+                dlg().setTitle("Chọn kiểu giao diện")
+                    .setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
+                        dd.dismiss()
+                        st = STYLES[k]
+                        prefs.edit().putInt("style", k).apply()
+                        applyStyle()
+                        load()
+                        toast("Đã đổi kiểu giao diện")
+                    }.show()
+            }
+        })
+
+        val iconValue = TextView(this).apply { text = "Kích thước biểu tượng: ${iconSizePx()} dp"; setTextColor(Color.WHITE) }
+        box.addView(iconValue)
+        box.addView(SeekBar(this).apply {
+            max = 32; progress = iconSizePx() - 40
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(s: SeekBar, p: Int, u: Boolean) { iconValue.text = "Kích thước biểu tượng: ${p + 40} dp" }
+                override fun onStartTrackingTouch(s: SeekBar) {}
+                override fun onStopTrackingTouch(s: SeekBar) {}
+            })
+        })
+
+        val labels = Switch(this).apply {
+            text = "Hiện tên ứng dụng"; setTextColor(Color.WHITE); isChecked = labelsOn()
+        }
+        box.addView(labels)
+
+        val center = Switch(this).apply {
+            text = "Đồng hồ ở giữa"; setTextColor(Color.WHITE); isChecked = clockCenterOn()
+        }
+        box.addView(center)
+
+        val clockValue = TextView(this).apply { text = "Cỡ đồng hồ: ${clockSp().toInt()} sp"; setTextColor(Color.WHITE) }
+        box.addView(clockValue)
+        box.addView(SeekBar(this).apply {
+            max = 44; progress = clockSp().toInt() - 28
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(s: SeekBar, p: Int, u: Boolean) { clockValue.text = "Cỡ đồng hồ: ${p + 28} sp" }
+                override fun onStartTrackingTouch(s: SeekBar) {}
+                override fun onStopTrackingTouch(s: SeekBar) {}
+            })
+        })
+
+        val dockValue = TextView(this).apply { text = "Độ trong suốt thanh dock: ${dockAlpha()}%"; setTextColor(Color.WHITE) }
+        box.addView(dockValue)
+        box.addView(SeekBar(this).apply {
+            max = 90; progress = dockAlpha()
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(s: SeekBar, p: Int, u: Boolean) { dockValue.text = "Độ trong suốt thanh dock: $p%" }
+                override fun onStartTrackingTouch(s: SeekBar) {}
+                override fun onStopTrackingTouch(s: SeekBar) {}
+            })
+        })
+
+        box.addView(Button(this).apply {
+            text = "🧩 Thêm widget"
+            setOnClickListener { pickWidget() }
+        })
+        box.addView(Button(this).apply {
+            text = "🎛️ Mở Trung tâm điều khiển"
+            setOnClickListener { openCC() }
+        })
+        box.addView(Button(this).apply {
+            text = "🏝️ Cài đặt Đảo động"
+            setOnClickListener { toggleIsland() }
+        })
+
+        dlg().setTitle("Cá nhân hóa")
+            .setView(box)
+            .setNegativeButton("Đóng", null)
+            .setPositiveButton("Lưu") { _, _ ->
+                val iconSb = box.getChildAt(2) as SeekBar
+                val clockSb = box.getChildAt(6) as SeekBar
+                val dockSb = box.getChildAt(8) as SeekBar
+                prefs.edit()
+                    .putInt("iconSize", iconSb.progress + 40)
+                    .putBoolean("labels", labels.isChecked)
+                    .putBoolean("clockCenter", center.isChecked)
+                    .putInt("clockSp", clockSb.progress + 28)
+                    .putInt("dockAlpha", dockSb.progress)
+                    .apply()
+                applyStyle()
+                load()
+                refresh()
+            }.show()
+    }
+
     private fun applyStyle() {
         dock.background = if (st.dockAlpha > 0) GradientDrawable().apply {
-            setColor(Color.argb(st.dockAlpha, 255, 255, 255)); cornerRadius = dp(st.dockRadius).toFloat()
+            setColor(Color.argb(dockAlpha(), 255, 255, 255)); cornerRadius = dp(st.dockRadius).toFloat()
         } else null
         (dock.layoutParams as LinearLayout.LayoutParams).apply { leftMargin = dp(st.dockMargin); rightMargin = dp(st.dockMargin) }
         dock.requestLayout()

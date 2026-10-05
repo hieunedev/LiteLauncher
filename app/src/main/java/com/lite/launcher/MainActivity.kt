@@ -948,7 +948,19 @@ class MainActivity : Activity() {
             startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setClassName(a.pkg, a.cls)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED))
             closeDrawer(); cc.close()
-            if (looksLikeGame(a)) GameBoosterService.start(this, a.pkg, a.label)
+            if (looksLikeGame(a)) {
+                if (Settings.canDrawOverlays(this)) {
+                    GameBoosterService.start(this, a.pkg, a.label)
+                } else {
+                    AlertDialog.Builder(this)
+                        .setTitle("🎮 Game Booster cần quyền")
+                        .setMessage("Để hiện nút ⚡ ở góc trái khi chơi game, hãy cấp quyền 'Hiển thị trên ứng dụng khác' cho Lite Launcher.")
+                        .setNegativeButton("Để sau", null)
+                        .setPositiveButton("Mở cài đặt") { _, _ ->
+                            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+                        }.show()
+                }
+            }
         } catch (_: Exception) {}
     }
 

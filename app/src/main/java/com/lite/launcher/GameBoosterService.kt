@@ -30,19 +30,23 @@ class GameBoosterService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        if (Build.VERSION.SDK_INT >= 26) {
-            startForeground(1901, notification())
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(1901, notification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
             startForeground(1901, notification())
         }
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        if (Settings.canDrawOverlays(this)) showOverlay()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         gamePkg = intent?.getStringExtra("package") ?: gamePkg
         gameName = intent?.getStringExtra("name") ?: gameName
-        return START_STICKY
+        if (Settings.canDrawOverlays(this)) {
+            if (root == null) showOverlay() else updateGameTitle()
+        } else {
+            stopSelf()
+        }
+        return START_NOT_STICKY
     }
 
     private fun createChannel() {
@@ -66,6 +70,11 @@ class GameBoosterService : Service() {
         setColor(Color.argb(226, 22, 23, 29))
         setStroke(dp(1), Color.argb(75, 255, 255, 255))
         cornerRadius = dp(22).toFloat()
+    }
+
+    private fun updateGameTitle() {
+        root?.findViewWithTag<TextView>("game_name")?.text = gameName
+        try { getSystemService(NOTIFICATION_SERVICE).let { (it as NotificationManager).notify(1901, notification()) } } catch (_: Exception) {}
     }
 
     private fun showOverlay() {
@@ -92,6 +101,7 @@ class GameBoosterService : Service() {
                 setTextColor(Color.WHITE)
             })
             addView(TextView(this@GameBoosterService).apply {
+                tag = "game_name"
                 text = gameName
                 textSize = 12f
                 setTextColor(Color.argb(185,255,255,255))
@@ -237,12 +247,21 @@ class GameBoosterService : Service() {
     override fun onBind(intent: Intent?) = null
 
     companion object {
-        fun start(c: Context, pkg: String, name: String) {
-            if (!Settings.canDrawOverlays(c)) return
+        fun start(c: Context, pkg: String, name: String): Boolean {
+            if (!Settings.canDrawOverlays(c)) return false
             val i = Intent(c, GameBoosterService::class.java)
                 .putExtra("package", pkg)
                 .putExtra("name", name)
-            if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i) else c.startService(i)
+            try {
+                if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i) else c.startService(i)
+                return true
+            } catch (_: Exception) {
+                return false
+            }
+        }
+
+        fun stop(c: Context) {
+            try { c.stopService(Intent(c, GameBoosterService::class.java)) } catch (_: Exception) {}
         }
     }
 }

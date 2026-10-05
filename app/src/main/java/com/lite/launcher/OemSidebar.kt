@@ -110,8 +110,8 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
         if (open) return
         open = true
         build()
-        val p = panel.layoutParams
-        p.width = dp(318); p.height = MATCH_PARENT
+        val p = panel.layoutParams as ViewGroup.MarginLayoutParams
+        p.width = dp(318); p.height = ViewGroup.LayoutParams.MATCH_PARENT
         p.setMargins(0, dp(10), 0, dp(10))
         panel.layoutParams = p
         panel.translationX = dp(318).toFloat()
@@ -126,7 +126,7 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
         handle.text = "‹"
         panel.animate().translationX(dp(318).toFloat()).setDuration(130)
             .withEndAction {
-                val p = panel.layoutParams
+                val p = panel.layoutParams as ViewGroup.MarginLayoutParams
                 p.setMargins(0, dp(10), -dp(318), dp(10))
                 panel.layoutParams = p
             }.start()
@@ -197,7 +197,7 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
         panel.addView(row("🔎", "Tìm kiếm", "Mở tìm kiếm ứng dụng") { onSearch(); close() },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
         panel.addView(row("🎛️", "Trung tâm điều khiển", "Wi‑Fi, Bluetooth, sáng, âm lượng") { onControlCenter(); close() },
-            LinearLayout.LayoutParams(MATCH, dp(66)).apply { bottomMargin = dp(7) })
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
         panel.addView(row("🎮", "Game Booster", "Công cụ nổi khi chơi game") { onGameBooster(); close() },
             LinearLayout.LayoutParams(MATCH, dp(66)).apply { bottomMargin = dp(7) })
         panel.addView(row("⚡", "Dọn RAM", "Dọn các tiến trình nền không cần thiết") { onClean() },

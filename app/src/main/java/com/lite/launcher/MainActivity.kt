@@ -750,16 +750,49 @@ class MainActivity : Activity() {
 
     private fun openDrawer(focus: Boolean) {
         if (drawer.visibility == View.VISIBLE) return
-        filter(""); drawer.alpha = 0f; drawer.translationY = dp(60).toFloat(); drawer.visibility = View.VISIBLE
-        drawer.animate().alpha(1f).translationY(0f).setDuration(160).withEndAction { home.visibility = View.INVISIBLE }.start()
-        if (focus) { input.requestFocus(); ui.postDelayed({ (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(input, 0) }, 160) }
+        filter("")
+        home.visibility = View.INVISIBLE
+        drawer.visibility = View.VISIBLE
+        drawer.alpha = 1f
+        drawer.translationY = root.height.toFloat()
+        drawer.animate().translationY(0f).setDuration(190).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+        if (focus) {
+            input.requestFocus()
+            ui.postDelayed({ (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(input, 0) }, 190)
+        }
+    }
+
+    private fun startDrawerPull() {
+        if (drawer.visibility == View.VISIBLE || cc.isOpen || gameCenter.isOpen) return
+        filter("")
+        home.visibility = View.INVISIBLE
+        drawer.visibility = View.VISIBLE
+        drawer.alpha = 1f
+        drawer.translationY = root.height.toFloat()
+        pullingDrawer = true
+    }
+
+    private fun updateDrawerPull(dy: Float) {
+        if (pullingDrawer) drawer.translationY = (root.height + dy).coerceIn(0f, root.height.toFloat())
+    }
+
+    private fun finishDrawerPull(open: Boolean) {
+        if (!pullingDrawer) return
+        pullingDrawer = false
+        if (open) {
+            drawer.animate().translationY(0f).setDuration(115).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+        } else {
+            home.visibility = View.VISIBLE
+            drawer.animate().translationY(root.height.toFloat()).setDuration(100).withEndAction { drawer.visibility = View.GONE }.start()
+        }
     }
 
     private fun closeDrawer() {
         if (drawer.visibility != View.VISIBLE) return
+        pullingDrawer = false
         home.visibility = View.VISIBLE
         (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(input.windowToken, 0)
-        drawer.animate().alpha(0f).translationY(dp(60).toFloat()).setDuration(130).withEndAction {
+        drawer.animate().translationY(root.height.toFloat()).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).withEndAction {
             drawer.visibility = View.GONE; input.setText("")
         }.start()
     }

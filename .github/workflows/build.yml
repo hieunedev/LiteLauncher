@@ -24,34 +24,45 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          control = Path("app/src/main/java/com/lite/launcher/ControlCenter.kt")
-          s = control.read_text()
-          old = "        val id = cam ?: cm.cameraIdList.firstOrNull { cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }.also { cam = it } ?: return\n        torchOn = !torchOn; cm.setTorchMode(id, torchOn)"
-          new = "        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->\n            cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true\n        } ?: return\n        cam = id\n        torchOn = !torchOn\n        cm.setTorchMode(id, torchOn)"
-          if old not in s:
-              raise SystemExit("ControlCenter.kt: expected torch code was not found")
-          control.write_text(s.replace(old, new, 1))
+          def replace_once(path, old, new):
+              p = Path(path)
+              s = p.read_text()
+              if new in s:
+                  return
+              if old not in s:
+                  raise SystemExit(f"{path}: expected source pattern was not found")
+              p.write_text(s.replace(old, new, 1))
 
-          island = Path("app/src/main/java/com/lite/launcher/IslandService.kt")
-          s = island.read_text()
-          old = "            if (n.category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post"
-          new = "            val category = n.category\n            if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post"
-          if old not in s:
-              raise SystemExit("IslandService.kt: expected notification category code was not found")
-          island.write_text(s.replace(old, new, 1))
+          replace_once(
+              "app/src/main/java/com/lite/launcher/ControlCenter.kt",
+              """        val id = cam ?: cm.cameraIdList.firstOrNull { cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }.also { cam = it } ?: return
+          torchOn = !torchOn; cm.setTorchMode(id, torchOn)""",
+              """        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->
+              cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+          } ?: return
+          cam = id
+          torchOn = !torchOn
+          cm.setTorchMode(id, torchOn)"""
+          )
 
-          main = Path("app/src/main/java/com/lite/launcher/MainActivity.kt")
-          s = main.read_text()
-          old = "    private fun pageAdapter(count: () -> Int, bind: (Int) -> View) = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {"
-          new = "    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {"
-          if old not in s:
-              raise SystemExit("MainActivity.kt: expected pageAdapter declaration was not found")
-          s = s.replace(old, new, 1)
-          old = "        gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START"
-          new = "        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)"
-          if old not in s:
-              raise SystemExit("MainActivity.kt: expected clock gravity expression was not found")
-          main.write_text(s.replace(old, new, 1))
+          replace_once(
+              "app/src/main/java/com/lite/launcher/IslandService.kt",
+              """            if (n.category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post""",
+              """            val category = n.category
+              if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post"""
+          )
+
+          replace_once(
+              "app/src/main/java/com/lite/launcher/MainActivity.kt",
+              """    private fun pageAdapter(count: () -> Int, bind: (Int) -> View) = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {""",
+              """    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {"""
+          )
+
+          replace_once(
+              "app/src/main/java/com/lite/launcher/MainActivity.kt",
+              """        gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START""",
+              """        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)"""
+          )
           PY
 
       - name: Build release APK

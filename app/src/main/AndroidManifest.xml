@@ -30,6 +30,11 @@
             </intent-filter>
         </activity>
         <service
+            android:name=".ControlCenterOverlayService"
+            android:exported="false"
+            android:label="Control Center">
+        </service>
+        <service
             android:name=".GameBoosterService"
             android:exported="false"
             android:label="Game Booster"

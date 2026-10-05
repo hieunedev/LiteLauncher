@@ -64,7 +64,7 @@ class MainActivity : Activity() {
     private lateinit var input: EditText
     private lateinit var results: RecyclerView
     private lateinit var cc: ControlCenter
-    private lateinit var gameCenter: GameCenter
+    private lateinit var gameBooster: GameBooster
 
     private var curPage = 0
     private var dragItem: Item? = null
@@ -154,8 +154,8 @@ class MainActivity : Activity() {
             onClean = { cleanRam() }
         }
         root.addView(cc, FrameLayout.LayoutParams(MATCH, MATCH))
-        gameCenter = GameCenter(this).apply { onLaunch = { a -> launch(a); closeGameCenter() }; onBoost = { cleanRam() } }
-        root.addView(gameCenter, FrameLayout.LayoutParams(MATCH, MATCH))
+        gameBooster = GameBooster(this).apply { onLaunch = { a -> launch(a); closeGameBooster() }; onBoost = { cleanRam() } }
+        root.addView(gameBooster, FrameLayout.LayoutParams(MATCH, MATCH))
         root.setOnDragListener { _, e -> onDrag(e) }
         setContentView(root)
         applyStyle()
@@ -329,8 +329,36 @@ class MainActivity : Activity() {
             }
             else -> clockView()
         }
-        v.setOnLongClickListener { startDrag(v, m); true }
+        armDragGesture(v, m)
         return v
+    }
+
+    private fun armDragGesture(v: View, m: Item) {
+        var downX = 0f
+        var downY = 0f
+        var moved = false
+        val dragRun = Runnable {
+            if (!moved && v.isAttachedToWindow && dragItem == null) startDrag(v, m)
+        }
+        v.setOnTouchListener { _, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = e.rawX
+                    downY = e.rawY
+                    moved = false
+                    ui.removeCallbacks(dragRun)
+                    ui.postDelayed(dragRun, 430)
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (abs(e.rawX - downX) > dp(12) || abs(e.rawY - downY) > dp(12)) {
+                        moved = true
+                        ui.removeCallbacks(dragRun)
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> ui.removeCallbacks(dragRun)
+            }
+            false
+        }
     }
 
     private fun clockView() = LinearLayout(this).apply {
@@ -562,7 +590,7 @@ class MainActivity : Activity() {
     private fun dlg() = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
 
     private fun showMenu() {
-        val o = arrayOf("📱 Ngăn ứng dụng", "🎮 Game Center", "🧩 Thêm widget", "🎨 Cá nhân hóa", "🖼️ Kiểu giao diện: " + st.name,
+        val o = arrayOf("📱 Ngăn ứng dụng", "🎮 Game Booster", "🧩 Thêm widget", "🎨 Cá nhân hóa", "🖼️ Kiểu giao diện: " + st.name,
             "📐 Chế độ: " + if (drawerMode) "Ngăn kéo (bấm để đổi sang Chuẩn)" else "Chuẩn (bấm để đổi sang Ngăn kéo)",
             "🎛️ Trung tâm điều khiển & đa nhiệm",
             "🏝️ Đảo động (Dynamic Island): " + if (prefs.getBoolean("island", false)) "Bật" else "Tắt",
@@ -570,7 +598,7 @@ class MainActivity : Activity() {
         dlg().setItems(o) { _, i ->
             when (i) {
                 0 -> openDrawer(false)
-                1 -> openGameCenter()
+                1 -> openGameBooster()
                 2 -> pickWidget()
                 3 -> showPersonalization()
                 4 -> dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
@@ -768,7 +796,7 @@ class MainActivity : Activity() {
     }
 
     private fun startDrawerPull() {
-        if (drawer.visibility == View.VISIBLE || cc.isOpen || gameCenter.isOpen) return
+        if (drawer.visibility == View.VISIBLE || cc.isOpen || gameBooster.isOpen) return
         filter("")
         drawer.visibility = View.VISIBLE
         drawer.alpha = 1f
@@ -799,11 +827,20 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    private fun looksLikeGame(a: App): Boolean {
+        val p = a.pkg.lowercase()
+        val n = a.label.lowercase()
+        return p.contains("game") || p.contains("play") ||
+            listOf("free fire", "call of duty", "genshin", "delta force", "honor of kings",
+                "minecraft", "roblox", "pubg", "liên quân", "arena", "valorant").any { n.contains(it) }
+    }
+
     private fun launch(a: App) {
         try {
             startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setClassName(a.pkg, a.cls)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED))
             closeDrawer(); cc.close()
+            if (looksLikeGame(a)) GameBoosterService.start(this, a.pkg, a.label)
         } catch (_: Exception) {}
     }
 
@@ -822,11 +859,11 @@ class MainActivity : Activity() {
             .mapNotNull { byPkg[it.packageName] }.distinctBy { it.pkg }.take(8)
     }
 
-    private fun openCC() { closeDrawer(); closeGameCenter(); cc.open(recentApps(), st, lite, root.paddingTop, hasUsage()) }
+    private fun openCC() { closeDrawer(); closeGameBooster(); cc.open(recentApps(), st, lite, root.paddingTop, hasUsage()) }
 
-    private fun openGameCenter() { closeDrawer(); cc.close(); gameCenter.open(apps, st, lite) }
+    private fun openGameCenter() { closeDrawer(); cc.close(); gameBooster.open(apps, st, lite) }
 
-    private fun closeGameCenter() { if (::gameCenter.isInitialized) gameCenter.close() }
+    private fun closeGameCenter() { if (::gameCenter.isInitialized) gameBooster.close() }
 
     private fun cleanRam() {
         val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

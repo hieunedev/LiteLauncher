@@ -1088,7 +1088,7 @@ class MainActivity : Activity() {
                 if (e1 == null || abs(vy) < abs(vx)) return false
                 // Vuốt xuống từ góc trên bên phải: Trung tâm điều khiển.
                 // Vuốt lên ở bất kỳ vị trí nào: Ngăn ứng dụng.
-                val threshold = (root.height * .10f).coerceAtLeast(dp(80))
+                val threshold = (root.height * .10f).coerceAtLeast(dp(80).toFloat())
                 if (e2.y - e1.y > threshold) {
                     if (e1.y < root.height * .3f && e1.x > root.width * .5f) openCC()
                 } else if (e1.y - e2.y > threshold) {

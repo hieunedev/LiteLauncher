@@ -74,6 +74,8 @@ class MainActivity : Activity() {
     private var menuOn = false
     private var edgeDir = 0
     private var gestureOk = true
+    private var pullStartY = 0f
+    private var pullingDrawer = false
     private var drawerTouchStartY = 0f
     private var pullingDrawerDown = false
 

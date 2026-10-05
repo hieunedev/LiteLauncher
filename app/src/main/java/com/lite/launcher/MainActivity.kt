@@ -695,8 +695,16 @@ class MainActivity : Activity() {
 
     // ================= Ngăn kéo + tìm kiếm =================
     private fun buildDrawer() {
-        drawer = FrameLayout(this).apply { setBackgroundColor(Color.argb(242, 10, 10, 14)); visibility = View.GONE; isClickable = true }
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), dp(12), dp(12), 0) }
+        drawer = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT); visibility = View.GONE; isClickable = true }
+        val col = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(18), dp(12), dp(8))
+            background = GradientDrawable().apply {
+                setColor(Color.argb(214, 18, 19, 24))
+                setStroke(dp(1), Color.argb(55, 255, 255, 255))
+                cornerRadii = floatArrayOf(dp(30).toFloat(), dp(30).toFloat(), dp(30).toFloat(), dp(30).toFloat(), 0f, 0f, 0f, 0f)
+            }
+        }
         input = EditText(this).apply {
             hint = "Tìm kiếm ứng dụng"; setHintTextColor(Color.parseColor("#99FFFFFF")); setTextColor(Color.WHITE)
             setSingleLine(); setPadding(dp(18), dp(10), dp(18), dp(10))

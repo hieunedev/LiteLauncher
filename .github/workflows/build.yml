@@ -24,22 +24,66 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          def replace_once(path, old, new):
+          def edit(path, transform):
               p = Path(path)
-              s = p.read_text()
-              if new in s:
-                  return
-              if old not in s:
-                  raise SystemExit(f"{path}: expected source pattern was not found")
-              p.write_text(s.replace(old, new, 1))
+              lines = p.read_text().splitlines()
+              out = transform(lines)
+              if out == lines:
+                  raise SystemExit(f"{path}: no changes were made")
+              p.write_text("\n".join(out) + "\n")
 
-          replace_once("app/src/main/java/com/lite/launcher/ControlCenter.kt", "        val id = cam ?: cm.cameraIdList.firstOrNull { cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }.also { cam = it } ?: return\\n        torchOn = !torchOn; cm.setTorchMode(id, torchOn)", "        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->\\n            cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true\\n        } ?: return\\n        cam = id\\n        torchOn = !torchOn\\n        cm.setTorchMode(id, torchOn)")
+          def control(lines):
+              out = []
+              i = 0
+              changed = False
+              while i < len(lines):
+                  if "val id = cam ?: cm.cameraIdList.firstOrNull" in lines[i]:
+                      out.extend([
+                          "        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->",
+                          "            cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true",
+                          "        } ?: return",
+                          "        cam = id",
+                          "        torchOn = !torchOn",
+                          "        cm.setTorchMode(id, torchOn)"
+                      ])
+                      i += 2
+                      changed = True
+                  else:
+                      out.append(lines[i])
+                      i += 1
+              return out if changed else lines
 
-          replace_once("app/src/main/java/com/lite/launcher/IslandService.kt", "            if (n.category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post", "            val category = n.category\\n            if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post")
+          def island(lines):
+              out = []
+              changed = False
+              for line in lines:
+                  if "if (n.category !in live" in line:
+                      out.extend([
+                          "            val category = n.category",
+                          "            if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post"
+                      ])
+                      changed = True
+                  else:
+                      out.append(line)
+              return out if changed else lines
 
-          replace_once("app/src/main/java/com/lite/launcher/MainActivity.kt", "    private fun pageAdapter(count: () -> Int, bind: (Int) -> View) = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {", "    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {")
+          def main(lines):
+              out = []
+              changed = False
+              for line in lines:
+                  if "private fun pageAdapter(count:" in line:
+                      out.append("    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {")
+                      changed = True
+                  elif "gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START" in line:
+                      out.append("        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)")
+                      changed = True
+                  else:
+                      out.append(line)
+              return out if changed else lines
 
-          replace_once("app/src/main/java/com/lite/launcher/MainActivity.kt", "        gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START", "        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)")
+          edit("app/src/main/java/com/lite/launcher/ControlCenter.kt", control)
+          edit("app/src/main/java/com/lite/launcher/IslandService.kt", island)
+          edit("app/src/main/java/com/lite/launcher/MainActivity.kt", main)
           PY
 
       - name: Build release APK

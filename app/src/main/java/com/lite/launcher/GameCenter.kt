@@ -25,7 +25,7 @@ class GameCenter(private val a: Activity) : FrameLayout(a) {
         isClickable = true
         setBackgroundColor(Color.argb(92, 0, 0, 0))
         setOnClickListener { close() }
-        addView(panel, LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        addView(panel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
     private fun text(s: String, sp: Float = 13f) = TextView(a).apply {
@@ -101,8 +101,8 @@ class GameCenter(private val a: Activity) : FrameLayout(a) {
                 setMargins(dp(4), dp(3), dp(4), dp(3))
             })
         }
-        scroll.addView(grid, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
-        panel.addView(scroll, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
+        scroll.addView(grid, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        panel.addView(scroll, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
         panel.addView(Button(a).apply {
             text = "⚙ Cài đặt tối ưu game"
             setOnClickListener { a.startActivity(Intent(Settings.ACTION_SETTINGS)) }

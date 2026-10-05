@@ -1,5 +1,9 @@
 name: build
 on: [push, workflow_dispatch]
+
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -15,11 +19,13 @@ jobs:
         with:
           gradle-version: 8.7
 
-      - name: Extract project
-        run: unzip -q LiteLauncher.zip
+      - name: Restore full source tree from archive
+        run: |
+          unzip -q LiteLauncher.zip
+          cp -a LiteLauncher/. .
+          rm -rf LiteLauncher
 
-      - name: Apply Kotlin compatibility fixes
-        working-directory: LiteLauncher
+      - name: Normalize Kotlin source
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -29,15 +35,14 @@ jobs:
               lines = p.read_text().splitlines()
               out = transform(lines)
               if out == lines:
-                  raise SystemExit(f"{path}: no changes were made")
+                  raise SystemExit(f"{path}: expected source pattern was not found")
               p.write_text("\n".join(out) + "\n")
 
           def control(lines):
               out = []
-              i = 0
               changed = False
-              while i < len(lines):
-                  if "val id = cam ?: cm.cameraIdList.firstOrNull" in lines[i]:
+              for line in lines:
+                  if "val id = cam ?: cm.cameraIdList.firstOrNull" in line:
                       out.extend([
                           "        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->",
                           "            cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true",
@@ -46,11 +51,11 @@ jobs:
                           "        torchOn = !torchOn",
                           "        cm.setTorchMode(id, torchOn)"
                       ])
-                      i += 2
+                      changed = True
+                  elif "torchOn = !torchOn; cm.setTorchMode(id, torchOn)" in line:
                       changed = True
                   else:
-                      out.append(lines[i])
-                      i += 1
+                      out.append(line)
               return out if changed else lines
 
           def island(lines):
@@ -71,7 +76,7 @@ jobs:
               out = []
               changed = False
               for line in lines:
-                  if "private fun pageAdapter(count:" in line:
+                  if "private fun pageAdapter(count:" in line and ": RecyclerView.Adapter<RecyclerView.ViewHolder>" not in line:
                       out.append("    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {")
                       changed = True
                   elif "gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START" in line:
@@ -86,21 +91,34 @@ jobs:
           edit("app/src/main/java/com/lite/launcher/MainActivity.kt", main)
           PY
 
+      - name: Commit normalized source tree
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Source tree already normalized"
+          else
+            git commit -m "Replace archive project with normalized source tree"
+            git push
+          fi
+
       - name: Build release APK
-        working-directory: LiteLauncher
         run: gradle assembleRelease --no-daemon --stacktrace
 
-      - name: Package fixed source
+      - name: Package source
         run: |
-          cd LiteLauncher
-          zip -qr ../LiteLauncher-fixed.zip .
+          zip -qr LiteLauncher-source.zip             app build.gradle.kts settings.gradle.kts gradle.properties             AndroidManifest.xml 2>/dev/null || true
+          if [ -d app ]; then
+            zip -qr LiteLauncher-source.zip app build.gradle.kts settings.gradle.kts gradle.properties
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
           name: apk
-          path: LiteLauncher/app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/release/*.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: LiteLauncher-fixed-source
-          path: LiteLauncher-fixed.zip
+          name: LiteLauncher-source
+          path: LiteLauncher-source.zip

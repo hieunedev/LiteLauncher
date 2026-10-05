@@ -6,6 +6,7 @@ import android.app.ActivityManager
 import android.app.AppOpsManager
 import android.app.Dialog
 import android.app.usage.UsageStatsManager
+import android.app.WallpaperManager
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -42,6 +43,7 @@ class MainActivity : Activity() {
     private lateinit var st: Style
     private var drawerMode = false
     private var lite = true
+    private var accent = Color.WHITE
 
     private var items = mutableListOf<Item>()
     private var apps = emptyList<App>()
@@ -175,6 +177,7 @@ class MainActivity : Activity() {
         root.setOnDragListener { _, e -> onDrag(e) }
         setContentView(root)
         applyStyle()
+        refreshWallpaperAccent()
 
         registerReceiver(receiver, IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED); addAction(Intent.ACTION_PACKAGE_REMOVED)
@@ -188,6 +191,7 @@ class MainActivity : Activity() {
         super.onResume()
         GameBoosterService.stop(this)
         if (::oemSidebar.isInitialized) oemSidebar.close()
+        refreshWallpaperAccent()
     }
     override fun onStop() { try { host.stopListening() } catch (_: Exception) {}; super.onStop() }
     override fun onDestroy() { unregisterReceiver(receiver); bg.shutdown(); super.onDestroy() }
@@ -722,7 +726,7 @@ class MainActivity : Activity() {
 
         box.addView(menuRow("🪄", "Giao diện thích ứng", "Tự động lấy màu chủ đạo từ hình nền") {
             prefs.edit().putBoolean("dynamicColor", !prefs.getBoolean("dynamicColor", true)).apply()
-            applyStyle()
+            refreshWallpaperAccent()
             dialog.dismiss()
             toast(if (prefs.getBoolean("dynamicColor", true)) "Đã bật màu thích ứng" else "Đã tắt màu thích ứng")
         }, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
@@ -858,9 +862,32 @@ class MainActivity : Activity() {
     internal fun isLiteMode() = lite
     internal fun launchFromSidebar(a: App) = launch(a)
 
+    private fun refreshWallpaperAccent() {
+        if (!prefs.getBoolean("dynamicColor", true) || Build.VERSION.SDK_INT < 27) {
+            accent = Color.WHITE
+            applyStyle()
+            return
+        }
+        bg.execute {
+            try {
+                val wc = WallpaperManager.getInstance(this).getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
+                val c = wc?.primaryColor?.toArgb() ?: Color.WHITE
+                ui.post {
+                    accent = c
+                    applyStyle()
+                }
+            } catch (_: Exception) {
+                ui.post {
+                    accent = Color.WHITE
+                    applyStyle()
+                }
+            }
+        }
+    }
+
     private fun applyStyle() {
         dock.background = if (st.dockAlpha > 0) GradientDrawable().apply {
-            setColor(Color.argb(dockAlpha(), 255, 255, 255)); cornerRadius = dp(st.dockRadius).toFloat()
+            setColor(Color.argb(dockAlpha(), Color.red(accent), Color.green(accent), Color.blue(accent))); cornerRadius = dp(st.dockRadius).toFloat()
         } else null
         (dock.layoutParams as LinearLayout.LayoutParams).apply { leftMargin = dp(st.dockMargin); rightMargin = dp(st.dockMargin) }
         dock.requestLayout()

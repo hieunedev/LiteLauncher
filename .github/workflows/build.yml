@@ -36,7 +36,7 @@ jobs:
           replace_once(
               "app/src/main/java/com/lite/launcher/ControlCenter.kt",
               """        val id = cam ?: cm.cameraIdList.firstOrNull { cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }.also { cam = it } ?: return
-          torchOn = !torchOn; cm.setTorchMode(id, torchOn)""",
+        torchOn = !torchOn; cm.setTorchMode(id, torchOn)""",
               """        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->
               cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
           } ?: return

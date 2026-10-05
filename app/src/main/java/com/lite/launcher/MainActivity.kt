@@ -820,7 +820,11 @@ class MainActivity : Activity() {
             .mapNotNull { byPkg[it.packageName] }.distinctBy { it.pkg }.take(8)
     }
 
-    private fun openCC() { closeDrawer(); cc.open(recentApps(), st, lite, root.paddingTop, hasUsage()) }
+    private fun openCC() { closeDrawer(); closeGameCenter(); cc.open(recentApps(), st, lite, root.paddingTop, hasUsage()) }
+
+    private fun openGameCenter() { closeDrawer(); cc.close(); gameCenter.open(apps, st, lite) }
+
+    private fun closeGameCenter() { if (::gameCenter.isInitialized) gameCenter.close() }
 
     private fun cleanRam() {
         val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -875,9 +879,32 @@ class MainActivity : Activity() {
     }
 
     override fun dispatchTouchEvent(e: MotionEvent): Boolean {
-        if (drawer.visibility != View.VISIBLE && !cc.isOpen) {
-            if (e.actionMasked == MotionEvent.ACTION_DOWN) gestureOk = !onWidget(e.rawX, e.rawY)
-            if (gestureOk) gestures.onTouchEvent(e)
+        if (drawer.visibility != View.VISIBLE && !cc.isOpen && !gameCenter.isOpen) {
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    pullStartY = e.rawY
+                    pullingDrawer = false
+                    gestureOk = !onWidget(e.rawX, e.rawY)
+                    if (gestureOk) gestures.onTouchEvent(e)
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dy = e.rawY - pullStartY
+                    if (gestureOk && !pullingDrawer && dy < -dp(12) && pullStartY > root.height * .35f) startDrawerPull()
+                    if (pullingDrawer) {
+                        updateDrawerPull(dy)
+                        return true
+                    }
+                    if (gestureOk) gestures.onTouchEvent(e)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val dy = e.rawY - pullStartY
+                    if (pullingDrawer) {
+                        finishDrawerPull(dy < -dp(58))
+                        return true
+                    }
+                    if (gestureOk) gestures.onTouchEvent(e)
+                }
+            }
         }
         return super.dispatchTouchEvent(e)
     }

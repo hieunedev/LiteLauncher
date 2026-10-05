@@ -288,7 +288,9 @@ class MainActivity : Activity() {
     private fun buildPage(i: Int): View = CellLayout(this, st.cols, st.rows).apply {
         setPadding(dp(6), dp(4), dp(6), 0)
         items.filter { it.page == i }.forEach { m -> viewFor(m)?.let { addView(it, CellLayout.LP(m.col, m.row, m.w, m.h)) } }
+        // Nhấn giữ vùng trống của màn hình chính -> menu tính năng.
         setOnLongClickListener { showMenu(); true }
+        isLongClickable = true
     }
 
     private fun pageView(i: Int) = (pager.layoutManager?.findViewByPosition(i) as? ViewGroup)?.getChildAt(0) as? CellLayout
@@ -553,27 +555,28 @@ class MainActivity : Activity() {
     private fun dlg() = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
 
     private fun showMenu() {
-        val o = arrayOf("Thêm widget", "Cá nhân hóa", "Kiểu giao diện: ${st.name}",
-            "Chế độ: " + if (drawerMode) "Ngăn kéo (bấm để đổi sang Chuẩn)" else "Chuẩn (bấm để đổi sang Ngăn kéo)",
-            "Trung tâm điều khiển & đa nhiệm",
-            "Đảo động (Dynamic Island): " + if (prefs.getBoolean("island", false)) "Bật" else "Tắt",
-            "Siêu nhẹ (tắt bóng & hiệu ứng): " + if (lite) "Bật" else "Tắt", "Đổi hình nền", "Đặt lại bố cục")
+        val o = arrayOf("📱 Ngăn ứng dụng", "🧩 Thêm widget", "🎨 Cá nhân hóa", "🖼️ Kiểu giao diện: ${st.name}",
+            "📐 Chế độ: " + if (drawerMode) "Ngăn kéo (bấm để đổi sang Chuẩn)" else "Chuẩn (bấm để đổi sang Ngăn kéo)",
+            "🎛️ Trung tâm điều khiển & đa nhiệm",
+            "🏝️ Đảo động (Dynamic Island): " + if (prefs.getBoolean("island", false)) "Bật" else "Tắt",
+            "⚡ Siêu nhẹ (tắt bóng & hiệu ứng): " + if (lite) "Bật" else "Tắt", "🌄 Đổi hình nền", "♻️ Đặt lại bố cục")
         dlg().setItems(o) { _, i ->
             when (i) {
-                0 -> pickWidget()
-                1 -> showPersonalization()
-                2 -> dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
+                0 -> openDrawer(false)
+                1 -> pickWidget()
+                2 -> showPersonalization()
+                3 -> dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
                     dd.dismiss(); st = STYLES[k]; prefs.edit().putInt("style", k).apply(); applyStyle(); load()
                 }.show()
-                3 -> {
+                4 -> {
                     drawerMode = !drawerMode; prefs.edit().putBoolean("drawer", drawerMode).apply()
                     if (drawerMode) items.removeAll { it.type == T_APP && it.page >= 0 }
                     refresh(); toast(if (drawerMode) "Đã bật Ngăn kéo: vuốt lên để mở" else "Đã về chế độ Chuẩn")
                 }
-                4 -> openCC()
-                5 -> toggleIsland()
-                6 -> { lite = !lite; prefs.edit().putBoolean("lite", lite).apply(); applyStyle(); refresh() }
-                7 -> startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
+                5 -> openCC()
+                6 -> toggleIsland()
+                7 -> { lite = !lite; prefs.edit().putBoolean("lite", lite).apply(); applyStyle(); refresh() }
+                8 -> startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
                 else -> { initLayout(); reflow(); refresh() }
             }
         }.show()
@@ -802,8 +805,13 @@ class MainActivity : Activity() {
         GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, vx: Float, vy: Float): Boolean {
                 if (e1 == null || abs(vy) < abs(vx)) return false
-                if (e2.y - e1.y > dp(80)) { if (e1.y < root.height * .3f && e1.x > root.width * .5f) openCC() else openDrawer(true) }
-                else if (e1.y - e2.y > dp(80) && drawerMode) openDrawer(false)
+                // Vuốt xuống từ góc trên bên phải: Trung tâm điều khiển.
+                // Vuốt lên ở bất kỳ vị trí nào: Ngăn ứng dụng.
+                if (e2.y - e1.y > dp(80)) {
+                    if (e1.y < root.height * .3f && e1.x > root.width * .5f) openCC()
+                } else if (e1.y - e2.y > dp(80)) {
+                    openDrawer(false)
+                }
                 return false
             }
         })

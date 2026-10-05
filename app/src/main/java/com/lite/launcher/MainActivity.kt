@@ -955,30 +955,14 @@ class MainActivity : Activity() {
         }
 
         if (!cc.isOpen && !gameBooster.isOpen) {
+            // Vuốt lên mở ngăn kéo theo kiểu cũ: GestureDetector xử lý cú vuốt
+            // và chỉ mở khi người dùng thả tay đủ nhanh/xa, không kéo panel theo ngón tay.
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    pullStartY = e.rawY
-                    pullingDrawer = false
                     gestureOk = !onWidget(e.rawX, e.rawY)
                     if (gestureOk) gestures.onTouchEvent(e)
                 }
-                MotionEvent.ACTION_MOVE -> {
-                    val dy = e.rawY - pullStartY
-                    if (gestureOk && !pullingDrawer && dy < -dp(12) && pullStartY > root.height * .35f) {
-                        startDrawerPull()
-                    }
-                    if (pullingDrawer) {
-                        updateDrawerPull(dy)
-                        return true
-                    }
-                    if (gestureOk) gestures.onTouchEvent(e)
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    val dy = e.rawY - pullStartY
-                    if (pullingDrawer) {
-                        finishDrawerPull(dy < -dp(58))
-                        return true
-                    }
+                MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     if (gestureOk) gestures.onTouchEvent(e)
                 }
             }

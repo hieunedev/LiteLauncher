@@ -19,11 +19,15 @@ jobs:
         with:
           gradle-version: 8.7
 
-      - name: Restore full source tree from archive
+      - name: Restore full source tree from archive when needed
         run: |
-          unzip -q LiteLauncher.zip
-          cp -a LiteLauncher/. .
-          rm -rf LiteLauncher
+          if [ -f app/build.gradle.kts ]; then
+            echo "Root source tree already exists; keeping current source"
+          else
+            unzip -q LiteLauncher.zip
+            cp -a LiteLauncher/. .
+            rm -rf LiteLauncher
+          fi
 
       - name: Normalize Kotlin source
         run: |

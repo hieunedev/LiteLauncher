@@ -1048,7 +1048,8 @@ class MainActivity : Activity() {
     }
 
     override fun dispatchTouchEvent(e: MotionEvent): Boolean {
-        // Khi ngăn kéo đang mở: vẫn cho phép vuốt xuống để đóng theo ngón tay.
+        // Ngăn kéo mở theo ngưỡng khoảng 1/10 màn hình.
+        // Không kéo panel theo ngón tay: chỉ khi thả tay đủ xa mới chạy animation mở.
         if (drawer.visibility == View.VISIBLE && !cc.isOpen && !gameBooster.isOpen) {
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -1077,16 +1078,26 @@ class MainActivity : Activity() {
         }
 
         if (!cc.isOpen && !gameBooster.isOpen) {
-            // Vuốt lên ít nhất 1/10 chiều cao màn hình rồi thả:
-            // không kéo panel theo ngón tay; chỉ khi thả mới mở ngăn kéo.
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    pullStartY = e.rawY
                     gestureOk = !onWidget(e.rawX, e.rawY)
-                    if (gestureOk) gestures.onTouchEvent(e)
                 }
-                MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (gestureOk) gestures.onTouchEvent(e)
+                MotionEvent.ACTION_UP -> {
+                    val dy = e.rawY - pullStartY
+                    val threshold = root.height * .10f
+                    if (gestureOk && dy <= -threshold) {
+                        openDrawer(false)
+                        return true
+                    }
+                    // Vuốt xuống từ góc trên bên phải vẫn mở Trung tâm điều khiển.
+                    if (gestureOk && dy >= threshold &&
+                        pullStartY < root.height * .3f && e.rawX > root.width * .5f) {
+                        openCC()
+                        return true
+                    }
                 }
+                MotionEvent.ACTION_CANCEL -> gestureOk = false
             }
         }
         return super.dispatchTouchEvent(e)

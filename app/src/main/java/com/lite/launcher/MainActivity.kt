@@ -74,6 +74,8 @@ class MainActivity : Activity() {
     private var menuOn = false
     private var edgeDir = 0
     private var gestureOk = true
+    private var drawerTouchStartY = 0f
+    private var pullingDrawerDown = false
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) = load()
@@ -700,10 +702,12 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(18), dp(12), dp(8))
             background = GradientDrawable().apply {
-                setColor(Color.argb(214, 18, 19, 24))
-                setStroke(dp(1), Color.argb(55, 255, 255, 255))
+                // Glass trong suốt: vẫn nhìn thấy màn hình chính phía dưới.
+                setColor(Color.argb(112, 20, 22, 28))
+                setStroke(dp(1), Color.argb(70, 255, 255, 255))
                 cornerRadii = floatArrayOf(dp(30).toFloat(), dp(30).toFloat(), dp(30).toFloat(), dp(30).toFloat(), 0f, 0f, 0f, 0f)
             }
+            elevation = dp(10).toFloat()
         }
         input = EditText(this).apply {
             hint = "Tìm kiếm ứng dụng"; setHintTextColor(Color.parseColor("#99FFFFFF")); setTextColor(Color.WHITE)
@@ -751,7 +755,6 @@ class MainActivity : Activity() {
     private fun openDrawer(focus: Boolean) {
         if (drawer.visibility == View.VISIBLE) return
         filter("")
-        home.visibility = View.INVISIBLE
         drawer.visibility = View.VISIBLE
         drawer.alpha = 1f
         drawer.translationY = root.height.toFloat()
@@ -782,7 +785,6 @@ class MainActivity : Activity() {
         if (open) {
             drawer.animate().translationY(0f).setDuration(115).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
         } else {
-            home.visibility = View.VISIBLE
             drawer.animate().translationY(root.height.toFloat()).setDuration(100).withEndAction { drawer.visibility = View.GONE }.start()
         }
     }
@@ -790,7 +792,6 @@ class MainActivity : Activity() {
     private fun closeDrawer() {
         if (drawer.visibility != View.VISIBLE) return
         pullingDrawer = false
-        home.visibility = View.VISIBLE
         (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(input.windowToken, 0)
         drawer.animate().translationY(root.height.toFloat()).setDuration(120).setInterpolator(android.view.animation.DecelerateInterpolator()).withEndAction {
             drawer.visibility = View.GONE; input.setText("")
@@ -879,7 +880,43 @@ class MainActivity : Activity() {
     }
 
     override fun dispatchTouchEvent(e: MotionEvent): Boolean {
-        if (drawer.visibility != View.VISIBLE && !cc.isOpen && !gameCenter.isOpen) {
+        // Ngăn kéo đang mở: vuốt xuống để kéo cả ngăn kéo theo ngón tay.
+        // Thả đủ xa -> đóng; kéo chưa đủ -> tự trượt về vị trí mở.
+        if (drawer.visibility == View.VISIBLE && !cc.isOpen && !gameCenter.isOpen) {
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    drawerTouchStartY = e.rawY
+                    pullingDrawerDown = false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dy = e.rawY - drawerTouchStartY
+                    if (!pullingDrawerDown && dy > dp(12)) pullingDrawerDown = true
+                    if (pullingDrawerDown) {
+                        drawer.translationY = dy.coerceIn(0f, root.height.toFloat())
+                        return true
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (pullingDrawerDown) {
+                        val dy = e.rawY - drawerTouchStartY
+                        pullingDrawerDown = false
+                        if (dy > dp(58)) {
+                            closeDrawer()
+                        } else {
+                            drawer.animate()
+                                .translationY(0f)
+                                .setDuration(140)
+                                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                                .start()
+                        }
+                        return true
+                    }
+                }
+            }
+            return super.dispatchTouchEvent(e)
+        }
+
+        if (!cc.isOpen && !gameCenter.isOpen) {
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     pullStartY = e.rawY
@@ -889,7 +926,9 @@ class MainActivity : Activity() {
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dy = e.rawY - pullStartY
-                    if (gestureOk && !pullingDrawer && dy < -dp(12) && pullStartY > root.height * .35f) startDrawerPull()
+                    if (gestureOk && !pullingDrawer && dy < -dp(12) && pullStartY > root.height * .35f) {
+                        startDrawerPull()
+                    }
                     if (pullingDrawer) {
                         updateDrawerPull(dy)
                         return true
@@ -916,6 +955,9 @@ class MainActivity : Activity() {
 
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
-        if (cc.isOpen) cc.close() else if (drawer.visibility == View.VISIBLE) closeDrawer() else pager.smoothScrollToPosition(0)
+        if (gameCenter.isOpen) gameCenter.close()
+        else if (cc.isOpen) cc.close()
+        else if (drawer.visibility == View.VISIBLE) closeDrawer()
+        else pager.smoothScrollToPosition(0)
     }
 }

@@ -26,36 +26,29 @@ jobs:
 
           control = Path("app/src/main/java/com/lite/launcher/ControlCenter.kt")
           s = control.read_text()
-          old = '''        val id = cam ?: cm.cameraIdList.firstOrNull { cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }.also { cam = it } ?: return
-                  torchOn = !torchOn; cm.setTorchMode(id, torchOn)'''
-          new = '''        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->
-              cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-          } ?: return
-          cam = id
-          torchOn = !torchOn
-          cm.setTorchMode(id, torchOn)'''
+          old = "        val id = cam ?: cm.cameraIdList.firstOrNull { cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }.also { cam = it } ?: return\n        torchOn = !torchOn; cm.setTorchMode(id, torchOn)"
+          new = "        val id = cam ?: cm.cameraIdList.firstOrNull { cameraId ->\n            cm.getCameraCharacteristics(cameraId).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true\n        } ?: return\n        cam = id\n        torchOn = !torchOn\n        cm.setTorchMode(id, torchOn)"
           if old not in s:
               raise SystemExit("ControlCenter.kt: expected torch code was not found")
           control.write_text(s.replace(old, new, 1))
 
           island = Path("app/src/main/java/com/lite/launcher/IslandService.kt")
           s = island.read_text()
-          old = '''            if (n.category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post'''
-          new = '''            val category = n.category
-                      if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post'''
+          old = "            if (n.category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post"
+          new = "            val category = n.category\n            if (category == null || category !in live || (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return@post"
           if old not in s:
               raise SystemExit("IslandService.kt: expected notification category code was not found")
           island.write_text(s.replace(old, new, 1))
 
           main = Path("app/src/main/java/com/lite/launcher/MainActivity.kt")
           s = main.read_text()
-          old = '''    private fun pageAdapter(count: () -> Int, bind: (Int) -> View) = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {'''
-          new = '''    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {'''
+          old = "    private fun pageAdapter(count: () -> Int, bind: (Int) -> View) = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {"
+          new = "    private fun pageAdapter(count: () -> Int, bind: (Int) -> View): RecyclerView.Adapter<RecyclerView.ViewHolder> = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {"
           if old not in s:
               raise SystemExit("MainActivity.kt: expected pageAdapter declaration was not found")
           s = s.replace(old, new, 1)
-          old = '''        gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START'''
-          new = '''        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)'''
+          old = "        gravity = if (st.clockCenter) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START"
+          new = "        gravity = if (st.clockCenter) Gravity.CENTER else (Gravity.CENTER_VERTICAL or Gravity.START)"
           if old not in s:
               raise SystemExit("MainActivity.kt: expected clock gravity expression was not found")
           main.write_text(s.replace(old, new, 1))

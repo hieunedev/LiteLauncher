@@ -31,9 +31,14 @@ class ControlCenter(private val a: Activity) : FrameLayout(a) {
 
     init {
         visibility = View.GONE; isClickable = true
-        setBackgroundColor(Color.argb(110, 0, 0, 0)); setOnClickListener { close() }
+        setBackgroundColor(Color.argb(82, 0, 0, 0)); setOnClickListener { close() }
         val r = dp(28).toFloat()
-        panel.background = GradientDrawable().apply { setColor(Color.argb(244, 22, 22, 28)); cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r) }
+        panel.background = GradientDrawable().apply {
+            setColor(Color.argb(218, 28, 29, 35))
+            setStroke(dp(1), Color.argb(55, 255, 255, 255))
+            cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r)
+        }
+        panel.elevation = dp(10).toFloat()
         addView(panel, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.TOP))
     }
 
@@ -85,6 +90,7 @@ class ControlCenter(private val a: Activity) : FrameLayout(a) {
 
     fun open(recents: List<App>, st: Style, lite: Boolean, topInset: Int, usageOk: Boolean) {
         panel.removeAllViews(); panel.setPadding(dp(14), topInset + dp(12), dp(14), dp(16))
+        panel.addView(label("◈  Trung tâm điều khiển", 20f).apply { setPadding(dp(4), 0, 0, dp(8)) })
         panel.addView(row(
             tile("📶\nInternet") { if (Build.VERSION.SDK_INT >= 29) go(Settings.Panel.ACTION_INTERNET_CONNECTIVITY) else go(Settings.ACTION_WIFI_SETTINGS) },
             tile("🔵\nBluetooth") { go(Settings.ACTION_BLUETOOTH_SETTINGS) },

@@ -558,7 +558,7 @@ class MainActivity : Activity() {
     private fun dlg() = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
 
     private fun showMenu() {
-        val o = arrayOf("📱 Ngăn ứng dụng", "🧩 Thêm widget", "🎨 Cá nhân hóa", "🖼️ Kiểu giao diện: ${st.name}",
+        val o = arrayOf("📱 Ngăn ứng dụng", "🎮 Game Center", "🧩 Thêm widget", "🎨 Cá nhân hóa", "🖼️ Kiểu giao diện: " + st.name,
             "📐 Chế độ: " + if (drawerMode) "Ngăn kéo (bấm để đổi sang Chuẩn)" else "Chuẩn (bấm để đổi sang Ngăn kéo)",
             "🎛️ Trung tâm điều khiển & đa nhiệm",
             "🏝️ Đảo động (Dynamic Island): " + if (prefs.getBoolean("island", false)) "Bật" else "Tắt",
@@ -566,20 +566,21 @@ class MainActivity : Activity() {
         dlg().setItems(o) { _, i ->
             when (i) {
                 0 -> openDrawer(false)
-                1 -> pickWidget()
-                2 -> showPersonalization()
-                3 -> dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
+                1 -> openGameCenter()
+                2 -> pickWidget()
+                3 -> showPersonalization()
+                4 -> dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
                     dd.dismiss(); st = STYLES[k]; prefs.edit().putInt("style", k).apply(); applyStyle(); load()
                 }.show()
-                4 -> {
+                5 -> {
                     drawerMode = !drawerMode; prefs.edit().putBoolean("drawer", drawerMode).apply()
                     if (drawerMode) items.removeAll { it.type == T_APP && it.page >= 0 }
                     refresh(); toast(if (drawerMode) "Đã bật Ngăn kéo: vuốt lên để mở" else "Đã về chế độ Chuẩn")
                 }
-                5 -> openCC()
-                6 -> toggleIsland()
-                7 -> { lite = !lite; prefs.edit().putBoolean("lite", lite).apply(); applyStyle(); refresh() }
-                8 -> startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
+                6 -> openCC()
+                7 -> toggleIsland()
+                8 -> { lite = !lite; prefs.edit().putBoolean("lite", lite).apply(); applyStyle(); refresh() }
+                9 -> startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
                 else -> { initLayout(); reflow(); refresh() }
             }
         }.show()

@@ -64,6 +64,7 @@ class MainActivity : Activity() {
     private lateinit var input: EditText
     private lateinit var results: RecyclerView
     private lateinit var cc: ControlCenter
+    private lateinit var gameCenter: GameCenter
 
     private var curPage = 0
     private var dragItem: Item? = null
@@ -149,6 +150,8 @@ class MainActivity : Activity() {
             onClean = { cleanRam() }
         }
         root.addView(cc, FrameLayout.LayoutParams(MATCH, MATCH))
+        gameCenter = GameCenter(this).apply { onLaunch = { a -> launch(a); closeGameCenter() }; onBoost = { cleanRam() } }
+        root.addView(gameCenter, FrameLayout.LayoutParams(MATCH, MATCH))
         root.setOnDragListener { _, e -> onDrag(e) }
         setContentView(root)
         applyStyle()

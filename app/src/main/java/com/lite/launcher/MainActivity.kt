@@ -168,6 +168,10 @@ class MainActivity : Activity() {
     }
 
     override fun onStart() { super.onStart(); try { host.startListening() } catch (_: Exception) {} }
+    override fun onResume() {
+        super.onResume()
+        GameBoosterService.stop(this)
+    }
     override fun onStop() { try { host.stopListening() } catch (_: Exception) {}; super.onStop() }
     override fun onDestroy() { unregisterReceiver(receiver); bg.shutdown(); super.onDestroy() }
 
@@ -589,33 +593,137 @@ class MainActivity : Activity() {
     // ================= Menu, kiểu giao diện, chế độ =================
     private fun dlg() = AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
 
+    private fun islandReady(): Boolean {
+        val l = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
+        return prefs.getBoolean("island", false) &&
+            Settings.canDrawOverlays(this) &&
+            l.contains(packageName)
+    }
+
+    private fun islandStatus(): String {
+        if (!prefs.getBoolean("island", false)) return "Tắt"
+        if (!Settings.canDrawOverlays(this)) return "Cần quyền nổi"
+        val l = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
+        return if (l.contains(packageName)) "Bật" else "Cần quyền thông báo"
+    }
+
+    private fun menuRow(icon: String, title: String, sub: String, click: () -> Unit) =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            isClickable = true
+            setPadding(dp(14), dp(10), dp(12), dp(10))
+            background = GradientDrawable().apply {
+                setColor(Color.argb(32, 255, 255, 255))
+                cornerRadius = dp(16).toFloat()
+            }
+            addView(TextView(this@MainActivity).apply {
+                text = icon
+                textSize = 21f
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dp(40), dp(48)))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(this@MainActivity).apply {
+                    text = title
+                    textSize = 15f
+                    setTextColor(Color.WHITE)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = sub
+                    textSize = 11f
+                    setTextColor(Color.argb(165, 255, 255, 255))
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            setOnClickListener { click() }
+        }
+
     private fun showMenu() {
-        val o = arrayOf("📱 Ngăn ứng dụng", "🎮 Game Booster", "🧩 Thêm widget", "🎨 Cá nhân hóa", "🖼️ Kiểu giao diện: " + st.name,
-            "📐 Chế độ: " + if (drawerMode) "Ngăn kéo (bấm để đổi sang Chuẩn)" else "Chuẩn (bấm để đổi sang Ngăn kéo)",
-            "🎛️ Trung tâm điều khiển & đa nhiệm",
-            "🏝️ Đảo động (Dynamic Island): " + if (prefs.getBoolean("island", false)) "Bật" else "Tắt",
-            "⚡ Siêu nhẹ (tắt bóng & hiệu ứng): " + if (lite) "Bật" else "Tắt", "🌄 Đổi hình nền", "♻️ Đặt lại bố cục")
-        dlg().setItems(o) { _, i ->
-            when (i) {
-                0 -> openDrawer(false)
-                1 -> openGameBooster()
-                2 -> pickWidget()
-                3 -> showPersonalization()
-                4 -> dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
+        val dialog = Dialog(this)
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(14), dp(14), dp(12))
+            background = GradientDrawable().apply {
+                setColor(Color.argb(238, 28, 29, 34))
+                setStroke(dp(1), Color.argb(55, 255, 255, 255))
+                cornerRadius = dp(26).toFloat()
+            }
+        }
+
+        box.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(6), dp(2), dp(6), dp(10))
+            addView(TextView(this@MainActivity).apply {
+                text = "Lite Launcher"
+                textSize = 23f
+                setTextColor(Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD
+            })
+            addView(TextView(this@MainActivity).apply {
+                text = "Trung tâm điều khiển"
+                textSize = 12f
+                setTextColor(Color.argb(165, 255, 255, 255))
+            })
+        })
+
+        val rows = listOf(
+            menuRow("📱", "Ngăn ứng dụng", "Mở danh sách tất cả ứng dụng") { dialog.dismiss(); openDrawer(false) },
+            menuRow("🎮", "Game Booster", "Thanh công cụ nổi khi chơi game") { dialog.dismiss(); openGameBooster() },
+            menuRow("🧩", "Thêm widget", "Thêm tiện ích vào màn hình chính") { dialog.dismiss(); pickWidget() },
+            menuRow("🎨", "Cá nhân hóa", "Biểu tượng, chữ, đồng hồ, dock") { dialog.dismiss(); showPersonalization() },
+            menuRow("🖼️", "Kiểu giao diện", st.name) {
+                dialog.dismiss()
+                dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
                     dd.dismiss(); st = STYLES[k]; prefs.edit().putInt("style", k).apply(); applyStyle(); load()
                 }.show()
-                5 -> {
-                    drawerMode = !drawerMode; prefs.edit().putBoolean("drawer", drawerMode).apply()
-                    if (drawerMode) items.removeAll { it.type == T_APP && it.page >= 0 }
-                    refresh(); toast(if (drawerMode) "Đã bật Ngăn kéo: vuốt lên để mở" else "Đã về chế độ Chuẩn")
-                }
-                6 -> openCC()
-                7 -> toggleIsland()
-                8 -> { lite = !lite; prefs.edit().putBoolean("lite", lite).apply(); applyStyle(); refresh() }
-                9 -> startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
-                else -> { initLayout(); reflow(); refresh() }
-            }
-        }.show()
+            },
+            menuRow("📐", "Chế độ màn hình chính", if (drawerMode) "Ngăn kéo • vuốt lên để mở" else "Chuẩn • ứng dụng nằm trên màn hình") {
+                drawerMode = !drawerMode
+                prefs.edit().putBoolean("drawer", drawerMode).apply()
+                if (drawerMode) items.removeAll { it.type == T_APP && it.page >= 0 }
+                refresh()
+                dialog.dismiss()
+                toast(if (drawerMode) "Đã bật Ngăn kéo" else "Đã về chế độ Chuẩn")
+            },
+            menuRow("🎛️", "Trung tâm điều khiển", "Điều khiển nhanh & đa nhiệm") { dialog.dismiss(); openCC() },
+            menuRow("🏝️", "Đảo động", islandStatus()) { dialog.dismiss(); toggleIsland() } 
+        )
+
+        rows.forEach { row ->
+            box.addView(row, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
+        }
+
+        box.addView(menuRow("⚡", "Siêu nhẹ", if (lite) "Đang bật • giảm bóng & hiệu ứng" else "Đang tắt • hiệu ứng đầy đủ") {
+            lite = !lite
+            prefs.edit().putBoolean("lite", lite).apply()
+            applyStyle(); refresh(); dialog.dismiss()
+        }, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
+
+        box.addView(menuRow("🌄", "Đổi hình nền", "Mở trình chọn hình nền hệ thống") {
+            dialog.dismiss()
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
+        }, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
+
+        box.addView(menuRow("♻️", "Đặt lại bố cục", "Xếp lại ứng dụng về bố cục mặc định") {
+            initLayout(); reflow(); refresh(); dialog.dismiss()
+        }, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
+
+        val scroll = ScrollView(this).apply {
+            overScrollMode = View.OVER_SCROLL_NEVER
+            addView(box)
+        }
+        dialog.setContentView(scroll)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setDimAmount(.48f)
+        dialog.setOnShowListener {
+            dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            dialog.window?.setLayout((resources.displayMetrics.widthPixels * .88f).toInt(), dp(650))
+        }
+        dialog.show()
+        dialog.window?.setLayout((resources.displayMetrics.widthPixels * .88f).toInt(), dp(650))
     }
 
     private fun showPersonalization() {
@@ -875,17 +983,26 @@ class MainActivity : Activity() {
 
     private fun toggleIsland() {
         val on = !prefs.getBoolean("island", false)
-        prefs.edit().putBoolean("island", on).apply()
-        if (!on) { toast("Đã tắt Đảo động"); return }
-        if (!Settings.canDrawOverlays(this)) {
-            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-            toast("Bật 'Hiển thị trên ứng dụng khác' rồi quay lại chọn mục này lần nữa"); return
+        if (!on) {
+            prefs.edit().putBoolean("island", false).apply()
+            toast("Đã tắt Đảo động")
+            return
         }
+
+        prefs.edit().putBoolean("island", true).apply()
+        if (!Settings.canDrawOverlays(this)) {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+            toast("Bật quyền 'Hiển thị trên ứng dụng khác' cho Lite Launcher")
+            return
+        }
+
         val l = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: ""
         if (!l.contains(packageName)) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-            toast("Bật quyền đọc thông báo cho Lite Launcher")
-        } else toast("Đã bật Đảo động")
+            toast("Bật quyền thông báo cho Lite Launcher")
+        } else {
+            toast("Đảo động đã sẵn sàng")
+        }
     }
 
     // ================= Cử chỉ & phím =================
@@ -895,9 +1012,10 @@ class MainActivity : Activity() {
                 if (e1 == null || abs(vy) < abs(vx)) return false
                 // Vuốt xuống từ góc trên bên phải: Trung tâm điều khiển.
                 // Vuốt lên ở bất kỳ vị trí nào: Ngăn ứng dụng.
-                if (e2.y - e1.y > dp(80)) {
+                val threshold = (root.height * .10f).coerceAtLeast(dp(80))
+                if (e2.y - e1.y > threshold) {
                     if (e1.y < root.height * .3f && e1.x > root.width * .5f) openCC()
-                } else if (e1.y - e2.y > dp(80)) {
+                } else if (e1.y - e2.y > threshold) {
                     openDrawer(false)
                 }
                 return false
@@ -918,8 +1036,7 @@ class MainActivity : Activity() {
     }
 
     override fun dispatchTouchEvent(e: MotionEvent): Boolean {
-        // Ngăn kéo đang mở: vuốt xuống để kéo cả ngăn kéo theo ngón tay.
-        // Thả đủ xa -> đóng; kéo chưa đủ -> tự trượt về vị trí mở.
+        // Khi ngăn kéo đang mở: vẫn cho phép vuốt xuống để đóng theo ngón tay.
         if (drawer.visibility == View.VISIBLE && !cc.isOpen && !gameBooster.isOpen) {
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -938,15 +1055,8 @@ class MainActivity : Activity() {
                     if (pullingDrawerDown) {
                         val dy = e.rawY - drawerTouchStartY
                         pullingDrawerDown = false
-                        if (dy > dp(58)) {
-                            closeDrawer()
-                        } else {
-                            drawer.animate()
-                                .translationY(0f)
-                                .setDuration(140)
-                                .setInterpolator(android.view.animation.DecelerateInterpolator())
-                                .start()
-                        }
+                        if (dy > root.height * .10f) closeDrawer()
+                        else drawer.animate().translationY(0f).setDuration(120).start()
                         return true
                     }
                 }
@@ -955,8 +1065,8 @@ class MainActivity : Activity() {
         }
 
         if (!cc.isOpen && !gameBooster.isOpen) {
-            // Vuốt lên mở ngăn kéo theo kiểu cũ: GestureDetector xử lý cú vuốt
-            // và chỉ mở khi người dùng thả tay đủ nhanh/xa, không kéo panel theo ngón tay.
+            // Vuốt lên ít nhất 1/10 chiều cao màn hình rồi thả:
+            // không kéo panel theo ngón tay; chỉ khi thả mới mở ngăn kéo.
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     gestureOk = !onWidget(e.rawX, e.rawY)

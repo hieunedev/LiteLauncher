@@ -768,7 +768,6 @@ class MainActivity : Activity() {
     private fun startDrawerPull() {
         if (drawer.visibility == View.VISIBLE || cc.isOpen || gameCenter.isOpen) return
         filter("")
-        home.visibility = View.INVISIBLE
         drawer.visibility = View.VISIBLE
         drawer.alpha = 1f
         drawer.translationY = root.height.toFloat()

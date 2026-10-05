@@ -954,7 +954,7 @@ class MainActivity : Activity() {
             return super.dispatchTouchEvent(e)
         }
 
-        if (!cc.isOpen && !gameCenter.isOpen) {
+        if (!cc.isOpen && !gameBooster.isOpen) {
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     pullStartY = e.rawY

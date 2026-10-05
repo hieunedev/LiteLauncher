@@ -7,7 +7,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
-import kotlin.math.abs
 
 /**
  * Thanh bên thông minh lấy cảm hứng từ Edge Panel / Magic Sidebar.
@@ -53,9 +52,7 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
             topMargin = dp(10); bottomMargin = dp(10)
             setMargins(0, dp(10), -dp(318), dp(10))
         })
-        addView(handle, LayoutParams(dp(30), dp(70), Gravity.END or Gravity.CENTER_VERTICAL).apply {
-            setMargins(0, 0, 0, 0)
-        })
+        addView(handle, LayoutParams(dp(30), dp(70), Gravity.END or Gravity.CENTER_VERTICAL))
 
         handle.setOnTouchListener { _, e -> edgeTouch(e) }
         setOnTouchListener { _, e ->
@@ -106,10 +103,33 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
             setOnClickListener { click() }
         }
 
+    private fun expandHost() {
+        val lp = layoutParams
+        if (lp != null) {
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT
+            lp.height = ViewGroup.LayoutParams.MATCH_PARENT
+            layoutParams = lp
+        }
+        bringToFront()
+    }
+
+    private fun shrinkHost() {
+        val lp = layoutParams
+        if (lp != null) {
+            lp.width = dp(30)
+            lp.height = ViewGroup.LayoutParams.MATCH_PARENT
+            lp.gravity = Gravity.END
+            layoutParams = lp
+        }
+    }
+
     fun open() {
         if (open) return
         open = true
         build()
+        // MainActivity keeps a 30dp host while closed so it doesn't block the launcher.
+        // Expand this host before animating; otherwise the 318dp panel is clipped by the parent.
+        expandHost()
         val p = panel.layoutParams as ViewGroup.MarginLayoutParams
         p.width = dp(318); p.height = ViewGroup.LayoutParams.MATCH_PARENT
         p.setMargins(0, dp(10), 0, dp(10))
@@ -129,6 +149,7 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
                 val p = panel.layoutParams as ViewGroup.MarginLayoutParams
                 p.setMargins(0, dp(10), -dp(318), dp(10))
                 panel.layoutParams = p
+                shrinkHost()
             }.start()
     }
 

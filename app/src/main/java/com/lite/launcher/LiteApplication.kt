@@ -8,6 +8,7 @@ import android.provider.Settings
 class LiteApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        if (!getSharedPreferences("launcher", MODE_PRIVATE).getBoolean("globalControlCenter", false)) return
         if (!Settings.canDrawOverlays(this)) return
         try {
             val i = Intent(this, ControlCenterOverlayService::class.java)

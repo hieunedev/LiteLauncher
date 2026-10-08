@@ -44,6 +44,7 @@ class MainActivity : Activity() {
     private var drawerMode = false
     private var lite = true
     private var accent = Color.WHITE
+    private var pendingControlCenterPermission = false
 
     private var items = mutableListOf<Item>()
     private var apps = emptyList<App>()
@@ -192,6 +193,11 @@ class MainActivity : Activity() {
         GameBoosterService.stop(this)
         if (::oemSidebar.isInitialized) oemSidebar.close()
         refreshWallpaperAccent()
+        if (pendingControlCenterPermission) {
+            pendingControlCenterPermission = false
+            if (Settings.canDrawOverlays(this)) setGlobalControlCenter(true)
+            else toast("Cần cấp quyền hiển thị trên ứng dụng khác")
+        }
     }
     override fun onStop() { try { host.stopListening() } catch (_: Exception) {}; super.onStop() }
     override fun onDestroy() { unregisterReceiver(receiver); bg.shutdown(); super.onDestroy() }
@@ -710,6 +716,10 @@ class MainActivity : Activity() {
                 toast(if (drawerMode) "Đã bật Ngăn kéo" else "Đã về chế độ Chuẩn")
             },
             menuRow("🎛️", "Trung tâm điều khiển", "Điều khiển nhanh & đa nhiệm") { dialog.dismiss(); openCC() },
+            menuRow("🌐", "Trung tâm điều khiển toàn hệ thống", if (prefs.getBoolean("globalControlCenter", false)) "Đang bật • vuốt từ mép trên xuống" else "Đang tắt") {
+                dialog.dismiss()
+                toggleGlobalControlCenter()
+            },
             menuRow("📌", "Thanh bên thông minh", if (prefs.getBoolean("sidebar", true)) "Bật • Edge Panel / Magic Sidebar" else "Tắt") {
                 val on = !prefs.getBoolean("sidebar", true)
                 prefs.edit().putBoolean("sidebar", on).apply()
@@ -1044,6 +1054,38 @@ class MainActivity : Activity() {
     }
 
     private fun openCC() { if (::oemSidebar.isInitialized) oemSidebar.close(); closeDrawer(); closeGameBooster(); cc.open(recentApps(), st, lite, root.paddingTop, hasUsage()) }
+
+    private fun toggleGlobalControlCenter() {
+        val enabled = prefs.getBoolean("globalControlCenter", false)
+        if (enabled) {
+            setGlobalControlCenter(false)
+            return
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            pendingControlCenterPermission = true
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            toast("Cấp quyền hiển thị trên ứng dụng khác để bật Trung tâm điều khiển toàn hệ thống")
+            return
+        }
+        setGlobalControlCenter(true)
+    }
+
+    private fun setGlobalControlCenter(enabled: Boolean) {
+        prefs.edit().putBoolean("globalControlCenter", enabled).apply()
+        if (enabled) {
+            try {
+                val service = Intent(this, ControlCenterOverlayService::class.java)
+                if (Build.VERSION.SDK_INT >= 26) startForegroundService(service) else startService(service)
+                toast("Đã bật Trung tâm điều khiển toàn hệ thống")
+            } catch (_: Exception) {
+                prefs.edit().putBoolean("globalControlCenter", false).apply()
+                toast("Không thể khởi động Trung tâm điều khiển")
+            }
+        } else {
+            stopService(Intent(this, ControlCenterOverlayService::class.java))
+            toast("Đã tắt Trung tâm điều khiển toàn hệ thống")
+        }
+    }
 
     private fun openGameBooster() { if (::oemSidebar.isInitialized) oemSidebar.close(); closeDrawer(); cc.close(); gameBooster.open(apps, st, lite) }
 

@@ -114,7 +114,7 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
     }
 
     private fun shrinkHost() {
-        val lp = layoutParams
+        val lp = layoutParams as? FrameLayout.LayoutParams
         if (lp != null) {
             lp.width = dp(30)
             lp.height = ViewGroup.LayoutParams.MATCH_PARENT

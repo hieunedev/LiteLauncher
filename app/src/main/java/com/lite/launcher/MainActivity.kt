@@ -647,15 +647,7 @@ class MainActivity : Activity() {
                     cornerRadius = dp(18).toFloat()
                 }, null
             )
-            addView(TextView(this@MainActivity).apply {
-                text = icon
-                textSize = 19f
-                gravity = Gravity.CENTER
-                background = GradientDrawable().apply {
-                    setColor(Color.argb(34, 116, 167, 255))
-                    cornerRadius = dp(14).toFloat()
-                }
-            }, LinearLayout.LayoutParams(dp(42), dp(42)).apply { rightMargin = dp(12) })
+            addView(MenuGlyphView(this@MainActivity, icon), LinearLayout.LayoutParams(dp(48), dp(48)).apply { rightMargin = dp(10) })
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -745,20 +737,20 @@ class MainActivity : Activity() {
         }
 
         section("Ứng dụng", listOf(
-            menuRow("📱", "Ngăn ứng dụng", "Mở danh sách tất cả ứng dụng") { dialog.dismiss(); openDrawer(false) },
-            menuRow("🎮", "Game Booster", "Thanh công cụ nổi khi chơi game") { dialog.dismiss(); openGameBooster() },
-            menuRow("🧩", "Thêm widget", "Thêm tiện ích vào màn hình chính") { dialog.dismiss(); pickWidget() }
+            menuRow("apps", "Ngăn ứng dụng", "Mở danh sách tất cả ứng dụng") { dialog.dismiss(); openDrawer(false) },
+            menuRow("game", "Game Booster", "Thanh công cụ nổi khi chơi game") { dialog.dismiss(); openGameBooster() },
+            menuRow("widget", "Thêm widget", "Thêm tiện ích vào màn hình chính") { dialog.dismiss(); pickWidget() }
         ))
 
         section("Giao diện", listOf(
-            menuRow("🎨", "Cá nhân hóa", "Biểu tượng, chữ, đồng hồ, dock") { dialog.dismiss(); showPersonalization() },
-            menuRow("🖼️", "Kiểu giao diện", st.name) {
+            menuRow("palette", "Cá nhân hóa", "Biểu tượng, chữ, đồng hồ, dock") { dialog.dismiss(); showPersonalization() },
+            menuRow("style", "Kiểu giao diện", st.name) {
                 dialog.dismiss()
                 dlg().setTitle("Kiểu giao diện").setSingleChoiceItems(STYLES.map { it.name }.toTypedArray(), STYLES.indexOf(st)) { dd, k ->
                     dd.dismiss(); st = STYLES[k]; prefs.edit().putInt("style", k).apply(); applyStyle(); load()
                 }.show()
             },
-            menuRow("📐", "Chế độ màn hình chính", if (drawerMode) "Ngăn kéo • vuốt lên để mở" else "Chuẩn • ứng dụng nằm trên màn hình") {
+            menuRow("layout", "Chế độ màn hình chính", if (drawerMode) "Ngăn kéo • vuốt lên để mở" else "Chuẩn • ứng dụng nằm trên màn hình") {
                 drawerMode = !drawerMode
                 prefs.edit().putBoolean("drawer", drawerMode).apply()
                 if (drawerMode) items.removeAll { it.type == T_APP && it.page >= 0 }
@@ -766,41 +758,41 @@ class MainActivity : Activity() {
                 dialog.dismiss()
                 toast(if (drawerMode) "Đã bật Ngăn kéo" else "Đã về chế độ Chuẩn")
             },
-            menuRow("🪄", "Giao diện thích ứng", "Tự động lấy màu chủ đạo từ hình nền") {
+            menuRow("magic", "Giao diện thích ứng", "Tự động lấy màu chủ đạo từ hình nền") {
                 prefs.edit().putBoolean("dynamicColor", !prefs.getBoolean("dynamicColor", true)).apply()
                 refreshWallpaperAccent()
                 dialog.dismiss()
                 toast(if (prefs.getBoolean("dynamicColor", true)) "Đã bật màu thích ứng" else "Đã tắt màu thích ứng")
             },
-            menuRow("⚡", "Siêu nhẹ", if (lite) "Đang bật • giảm bóng & hiệu ứng" else "Đang tắt • hiệu ứng đầy đủ") {
+            menuRow("bolt", "Siêu nhẹ", if (lite) "Đang bật • giảm bóng & hiệu ứng" else "Đang tắt • hiệu ứng đầy đủ") {
                 lite = !lite
                 prefs.edit().putBoolean("lite", lite).apply()
                 applyStyle(); refresh(); dialog.dismiss()
             },
-            menuRow("🌄", "Đổi hình nền", "Mở trình chọn hình nền hệ thống") {
+            menuRow("wallpaper", "Đổi hình nền", "Mở trình chọn hình nền hệ thống") {
                 dialog.dismiss()
                 startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
             }
         ))
 
         section("Tiện ích", listOf(
-            menuRow("🎛️", "Trung tâm điều khiển", "Điều khiển nhanh & đa nhiệm") { dialog.dismiss(); openCC() },
-            menuRow("🌐", "Trung tâm điều khiển toàn hệ thống", if (prefs.getBoolean("globalControlCenter", false)) "Đang bật • vuốt từ mép trên xuống" else "Đang tắt") {
+            menuRow("control", "Trung tâm điều khiển", "Điều khiển nhanh & đa nhiệm") { dialog.dismiss(); openCC() },
+            menuRow("globe", "Trung tâm điều khiển toàn hệ thống", if (prefs.getBoolean("globalControlCenter", false)) "Đang bật • vuốt từ mép trên xuống" else "Đang tắt") {
                 dialog.dismiss()
                 toggleGlobalControlCenter()
             },
-            menuRow("📌", "Thanh bên thông minh", if (prefs.getBoolean("sidebar", true)) "Bật • Edge Panel / Magic Sidebar" else "Tắt") {
+            menuRow("pin", "Thanh bên thông minh", if (prefs.getBoolean("sidebar", true)) "Bật • Edge Panel / Magic Sidebar" else "Tắt") {
                 val on = !prefs.getBoolean("sidebar", true)
                 prefs.edit().putBoolean("sidebar", on).apply()
                 oemSidebar.visibility = if (on) View.VISIBLE else View.GONE
                 dialog.dismiss()
                 toast(if (on) "Đã bật Thanh bên thông minh" else "Đã tắt Thanh bên thông minh")
             },
-            menuRow("🏝️", "Đảo động", islandStatus()) { dialog.dismiss(); toggleIsland() }
+            menuRow("island", "Đảo động", islandStatus()) { dialog.dismiss(); toggleIsland() }
         ))
 
         section("Hệ thống", listOf(
-            menuRow("♻️", "Đặt lại bố cục", "Xếp lại ứng dụng về bố cục mặc định") {
+            menuRow("reset", "Đặt lại bố cục", "Xếp lại ứng dụng về bố cục mặc định") {
                 initLayout(); reflow(); refresh(); dialog.dismiss()
             }
         ))

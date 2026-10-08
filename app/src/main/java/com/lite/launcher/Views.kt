@@ -113,3 +113,63 @@ class Dots(c: Context) : View(c) {
         cv.drawCircle(x0 + pos * gap, cy, 4 * dn, p)
     }
 }
+
+/** Small launcher menu glyphs drawn as vectors so they stay crisp and emoji-free. */
+class MenuGlyphView(c: Context, private val glyph: String) : View(c) {
+    private val d = resources.displayMetrics.density
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val tint = when (glyph) {
+        "game", "bolt" -> Color.rgb(255, 190, 92)
+        "widget", "magic", "island" -> Color.rgb(189, 151, 255)
+        "palette", "wallpaper" -> Color.rgb(255, 133, 160)
+        "control", "globe" -> Color.rgb(100, 207, 255)
+        "reset", "pin" -> Color.rgb(113, 222, 177)
+        else -> Color.rgb(139, 178, 255)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val size = 42f * d
+        canvas.save()
+        canvas.translate((width - size) / 2f, (height - size) / 2f)
+        canvas.scale(size / 48f, size / 48f)
+
+        paint.style = Paint.Style.FILL
+        paint.color = Color.argb(32, Color.red(tint), Color.green(tint), Color.blue(tint))
+        canvas.drawRoundRect(0f, 0f, 48f, 48f, 15f, 15f, paint)
+        paint.color = tint
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 2.2f
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeJoin = Paint.Join.ROUND
+
+        fun line(vararg xy: Float) {
+            val path = Path().apply {
+                moveTo(xy[0], xy[1])
+                for (i in 2 until xy.size step 2) lineTo(xy[i], xy[i + 1])
+            }
+            canvas.drawPath(path, paint)
+        }
+        fun rect(l: Float, t: Float, r: Float, b: Float, radius: Float = 3f) =
+            canvas.drawRoundRect(l, t, r, b, radius, radius, paint)
+        fun circle(x: Float, y: Float, r: Float) = canvas.drawCircle(x, y, r, paint)
+
+        when (glyph) {
+            "apps" -> { rect(11f, 11f, 21f, 21f); rect(27f, 11f, 37f, 21f); rect(11f, 27f, 21f, 37f); rect(27f, 27f, 37f, 37f) }
+            "game" -> { rect(9f, 16f, 39f, 33f, 7f); line(16f, 24f, 23f, 24f); line(19.5f, 20.5f, 19.5f, 27.5f); circle(31f, 22f, 1f); circle(35f, 27f, 1f) }
+            "widget" -> { rect(10f, 10f, 38f, 38f, 7f); line(24f, 16f, 24f, 32f); line(16f, 24f, 32f, 24f) }
+            "palette" -> { circle(24f, 24f, 14f); circle(19f, 20f, 1.3f); circle(26f, 17f, 1.3f); circle(31f, 23f, 1.3f); circle(20f, 29f, 1.3f) }
+            "style" -> { rect(11f, 11f, 37f, 37f, 6f); line(17f, 18f, 31f, 18f); line(17f, 24f, 31f, 24f); line(17f, 30f, 26f, 30f) }
+            "layout" -> { rect(10f, 12f, 38f, 36f, 5f); line(19f, 12f, 19f, 36f); line(29f, 12f, 29f, 36f); line(10f, 24f, 38f, 24f) }
+            "magic" -> { line(24f, 10f, 27f, 20f, 37f, 24f, 27f, 27f, 24f, 38f, 21f, 27f, 11f, 24f, 21f, 20f, 24f, 10f); line(35f, 10f, 35f, 16f); line(32f, 13f, 38f, 13f) }
+            "bolt" -> line(27f, 9f, 16f, 26f, 24f, 26f, 21f, 39f, 33f, 21f, 25f, 21f, 27f, 9f)
+            "wallpaper" -> { rect(10f, 12f, 38f, 36f, 5f); circle(29f, 19f, 2.5f); line(13f, 32f, 21f, 24f, 27f, 29f, 31f, 25f, 36f, 31f) }
+            "control" -> { circle(24f, 24f, 14f); line(24f, 13f, 24f, 35f); line(13f, 24f, 35f, 24f); circle(24f, 24f, 4f) }
+            "globe" -> { circle(24f, 24f, 14f); line(10f, 24f, 38f, 24f); line(24f, 10f, 24f, 38f); canvas.drawOval(17f, 10f, 31f, 38f, paint) }
+            "pin" -> { line(24f, 38f, 15f, 25f); circle(24f, 20f, 9f); circle(24f, 20f, 3f) }
+            "island" -> { rect(13f, 13f, 35f, 35f, 9f); line(18f, 24f, 30f, 24f); circle(17f, 18f, 1f); circle(31f, 30f, 1f) }
+            "reset" -> { line(14f, 19f, 14f, 12f, 21f, 12f); canvas.drawArc(12f, 12f, 37f, 37f, 205f, 285f, false, paint); line(34f, 29f, 34f, 36f, 27f, 36f) }
+        }
+        canvas.restore()
+    }
+}

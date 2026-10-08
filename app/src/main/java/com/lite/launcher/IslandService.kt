@@ -74,9 +74,10 @@ class IslandService : NotificationListenerService() {
     private fun ensure(): LinearLayout {
         box?.let { return it }
         val b = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), dp(7), dp(12), dp(7))
-            background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = dp(22).toFloat() }
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
+            minimumWidth = dp(104); minimumHeight = dp(44)
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = dp(24).toFloat() }
             setOnClickListener { try { curSbn?.notification?.contentIntent?.send() } catch (_: Exception) {}; hide() }
         }
         b.addView(ImageView(this).apply { tag = "i" }, LinearLayout.LayoutParams(dp(20), dp(20)))
@@ -93,7 +94,7 @@ class IslandService : NotificationListenerService() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; y = dp(6) } // chỉnh y nếu lệch với camera
+        ).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; y = dp(2) } // capsule ôm camera giọt nước
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         try { wm?.addView(b, lp) } catch (e: Exception) { return b }
         box = b

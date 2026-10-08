@@ -33,7 +33,6 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
     val isOpen get() = visibility == View.VISIBLE
     private var downX = 0f
     private var downY = 0f
-    private var interceptingCloseSwipe = false
 
     private fun dp(v: Int) = (v * d + .5f).toInt()
     private fun radius(v: Int) = v * d
@@ -61,39 +60,31 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
         })
     }
 
-    override fun onInterceptTouchEvent(event: android.view.MotionEvent): Boolean {
+    override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean {
         when (event.actionMasked) {
             android.view.MotionEvent.ACTION_DOWN -> {
                 downX = event.x
                 downY = event.y
-                interceptingCloseSwipe = false
             }
-            android.view.MotionEvent.ACTION_MOVE -> {
+            android.view.MotionEvent.ACTION_UP -> {
                 val dx = event.x - downX
                 val dy = event.y - downY
-                if (dy < -dp(72) && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.2f) {
-                    interceptingCloseSwipe = true
+                val closeSwipeDistance = height / 10f
+                if (dy < -closeSwipeDistance && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.2f) {
+                    val cancel = android.view.MotionEvent.obtain(event).apply {
+                        action = android.view.MotionEvent.ACTION_CANCEL
+                    }
+                    super.dispatchTouchEvent(cancel)
+                    cancel.recycle()
+                    requestClose()
                     return true
                 }
             }
-            android.view.MotionEvent.ACTION_CANCEL -> interceptingCloseSwipe = false
-        }
-        return interceptingCloseSwipe
-    }
-
-    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
-        when (event.actionMasked) {
-            android.view.MotionEvent.ACTION_UP -> {
-                if (interceptingCloseSwipe) requestClose()
-                interceptingCloseSwipe = false
-                return true
-            }
             android.view.MotionEvent.ACTION_CANCEL -> {
-                interceptingCloseSwipe = false
-                return true
+                // Let the child view finish cancelling its current touch sequence.
             }
         }
-        return super.onTouchEvent(event)
+        return super.dispatchTouchEvent(event)
     }
 
     private fun requestClose() {
@@ -120,6 +111,12 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
             contentDescription = "Settings"
             setOnClickListener { go(Settings.ACTION_SETTINGS) }
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
+        addView(TextView(a).apply {
+            text = "×"; textSize = 28f; gravity = Gravity.CENTER
+            setTextColor(Color.WHITE); background = surface(Color.argb(36, 255, 255, 255), 20)
+            contentDescription = "Close Control Center"
+            setOnClickListener { requestClose() }
+        }, LinearLayout.LayoutParams(dp(48), dp(48)).apply { leftMargin = dp(8) })
     }
 
     private fun tile(icon: String, title: String, detail: String = "", active: Boolean = false, click: () -> Unit) =

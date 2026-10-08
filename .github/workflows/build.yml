@@ -1,6 +1,7 @@
 name: build
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -20,6 +21,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Setup Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -34,8 +38,9 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: apk
+          name: LiteLauncher-release-apk
           path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
 
       - name: Upload source
         uses: actions/upload-artifact@v4

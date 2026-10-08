@@ -777,6 +777,9 @@ class MainActivity : Activity() {
 
         section("Tiện ích", listOf(
             menuRow("control", "Trung tâm điều khiển", "Điều khiển nhanh & đa nhiệm") { dialog.dismiss(); openCC() },
+            menuRow("palette", "Giao diện Trung tâm điều khiển", CONTROL_CENTER_SKINS[prefs.getInt("controlCenterSkin", 0).coerceIn(0, CONTROL_CENTER_SKINS.lastIndex)].name) {
+                dialog.dismiss(); showControlCenterSkinPicker()
+            },
             menuRow("globe", "Trung tâm điều khiển toàn hệ thống", if (prefs.getBoolean("globalControlCenter", false)) "Đang bật • vuốt từ mép trên xuống" else "Đang tắt") {
                 dialog.dismiss()
                 toggleGlobalControlCenter()
@@ -788,7 +791,11 @@ class MainActivity : Activity() {
                 dialog.dismiss()
                 toast(if (on) "Đã bật Thanh bên thông minh" else "Đã tắt Thanh bên thông minh")
             },
-            menuRow("island", "Đảo động", islandStatus()) { dialog.dismiss(); toggleIsland() }
+            menuRow("palette", "Giao diện thanh bên", SIDEBAR_SKINS[prefs.getInt("sidebarSkin", 0).coerceIn(0, SIDEBAR_SKINS.lastIndex)].name) {
+                dialog.dismiss(); showSidebarSkinPicker()
+            },
+            menuRow("island", "Đảo động", islandStatus()) { dialog.dismiss(); toggleIsland() },
+            menuRow("island", "Vị trí Đảo động", "Xem trước và chỉnh khoảng cách từ mép trên") { dialog.dismiss(); showIslandPosition() }
         ))
 
         section("Hệ thống", listOf(
@@ -901,8 +908,8 @@ class MainActivity : Activity() {
             setOnClickListener { openCC() }
         })
         box.addView(Button(this).apply {
-            text = "🏝️ Cài đặt Đảo động"
-            setOnClickListener { toggleIsland() }
+            text = "🏝️ Chỉnh vị trí Đảo động"
+            setOnClickListener { showIslandPosition() }
         })
 
         dlg().setTitle("Cá nhân hóa")
@@ -1178,6 +1185,88 @@ class MainActivity : Activity() {
         } else {
             toast("Đảo động đã sẵn sàng")
         }
+    }
+
+    private fun showIslandPosition() {
+        val current = prefs.getInt("islandYOffset", 2).coerceIn(2, 122)
+        val preview = FrameLayout(this).apply {
+            background = GradientDrawable().apply { setColor(Color.rgb(38, 40, 46)); cornerRadius = dp(18).toFloat() }
+            layoutParams = LinearLayout.LayoutParams(MATCH, dp(190)).apply { bottomMargin = dp(14) }
+        }
+        // Camera punch-hole marker in the preview.
+        preview.addView(View(this).apply {
+            background = GradientDrawable().apply { setColor(Color.BLACK); shape = GradientDrawable.OVAL }
+        }, FrameLayout.LayoutParams(dp(14), dp(14), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(8) })
+        val pill = TextView(this).apply {
+            text = "●  Đảo động"
+            setTextColor(Color.WHITE); textSize = 11f; gravity = Gravity.CENTER
+            background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = dp(24).toFloat() }
+            setPadding(dp(14), dp(8), dp(14), dp(8))
+        }
+        val pillLp = FrameLayout.LayoutParams(dp(126), dp(38), Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(current) }
+        preview.addView(pill, pillLp)
+
+        val value = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            text = "Khoảng cách từ mép trên: ${current} dp"
+        }
+        val slider = SeekBar(this).apply {
+            max = 120; progress = current - 2
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seek: SeekBar, progress: Int, fromUser: Boolean) {
+                    val offset = progress + 2
+                    value.text = "Khoảng cách từ mép trên: ${offset} dp"
+                    pillLp.topMargin = dp(offset)
+                    pill.layoutParams = pillLp
+                }
+                override fun onStartTrackingTouch(seek: SeekBar) {}
+                override fun onStopTrackingTouch(seek: SeekBar) {}
+            })
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(12), dp(20), 0)
+            addView(preview)
+            addView(value)
+            addView(slider)
+            addView(TextView(this@MainActivity).apply {
+                text = "Kéo thanh trượt để đưa Đảo động xuống dưới camera."
+                setTextColor(Color.LTGRAY); textSize = 13f
+            })
+        }
+        dlg().setTitle("Vị trí Đảo động")
+            .setView(content)
+            .setNegativeButton("Đóng", null)
+            .setPositiveButton("Lưu") { _, _ ->
+                prefs.edit().putInt("islandYOffset", slider.progress + 2).apply()
+                toast("Đã lưu vị trí Đảo động")
+            }.show()
+    }
+
+    private fun showSidebarSkinPicker() {
+        val selected = prefs.getInt("sidebarSkin", 0).coerceIn(0, SIDEBAR_SKINS.lastIndex)
+        dlg().setTitle("Giao diện thanh bên")
+            .setSingleChoiceItems(SIDEBAR_SKINS.map { it.name }.toTypedArray(), selected) { dialog, which ->
+                prefs.edit().putInt("sidebarSkin", which).apply()
+                oemSidebar.refreshStyle()
+                dialog.dismiss()
+                toast("Đã đổi giao diện thanh bên: ${SIDEBAR_SKINS[which].name}")
+            }
+            .setNegativeButton("Đóng", null)
+            .show()
+    }
+
+    private fun showControlCenterSkinPicker() {
+        val selected = prefs.getInt("controlCenterSkin", 0).coerceIn(0, CONTROL_CENTER_SKINS.lastIndex)
+        dlg().setTitle("Giao diện Trung tâm điều khiển")
+            .setSingleChoiceItems(CONTROL_CENTER_SKINS.map { it.name }.toTypedArray(), selected) { dialog, which ->
+                prefs.edit().putInt("controlCenterSkin", which).apply()
+                cc.refreshSkin()
+                dialog.dismiss()
+                toast("Đã đổi giao diện: ${CONTROL_CENTER_SKINS[which].name}")
+            }
+            .setNegativeButton("Đóng", null)
+            .show()
     }
 
     // ================= Cử chỉ & phím =================

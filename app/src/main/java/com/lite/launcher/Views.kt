@@ -119,10 +119,10 @@ class MenuGlyphView(c: Context, private val glyph: String) : View(c) {
     private val d = resources.displayMetrics.density
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val tint = when (glyph) {
-        "game", "bolt" -> Color.rgb(255, 190, 92)
+        "game", "bolt", "clean" -> Color.rgb(255, 190, 92)
         "widget", "magic", "island" -> Color.rgb(189, 151, 255)
         "palette", "wallpaper" -> Color.rgb(255, 133, 160)
-        "control", "globe" -> Color.rgb(100, 207, 255)
+        "control", "globe", "search" -> Color.rgb(100, 207, 255)
         "reset", "pin" -> Color.rgb(113, 222, 177)
         else -> Color.rgb(139, 178, 255)
     }
@@ -155,6 +155,8 @@ class MenuGlyphView(c: Context, private val glyph: String) : View(c) {
         fun circle(x: Float, y: Float, r: Float) = canvas.drawCircle(x, y, r, paint)
 
         when (glyph) {
+            "search" -> { circle(21f, 21f, 9f); line(28f, 28f, 36f, 36f) }
+            "clean" -> { line(13f, 16f, 35f, 16f); line(18f, 16f, 20f, 35f, 30f, 35f, 33f, 16f); line(20f, 12f, 28f, 12f); line(22f, 21f, 22f, 30f); line(28f, 21f, 28f, 30f) }
             "apps" -> { rect(11f, 11f, 21f, 21f); rect(27f, 11f, 37f, 21f); rect(11f, 27f, 21f, 37f); rect(27f, 27f, 37f, 37f) }
             "game" -> { rect(9f, 16f, 39f, 33f, 7f); line(16f, 24f, 23f, 24f); line(19.5f, 20.5f, 19.5f, 27.5f); circle(31f, 22f, 1f); circle(35f, 27f, 1f) }
             "widget" -> { rect(10f, 10f, 38f, 38f, 7f); line(24f, 16f, 24f, 32f); line(16f, 24f, 32f, 24f) }

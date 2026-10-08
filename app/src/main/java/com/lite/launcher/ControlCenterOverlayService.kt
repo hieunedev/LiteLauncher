@@ -77,11 +77,11 @@ class ControlCenterOverlayService : Service() {
     private fun startAsForeground() {
         if (Build.VERSION.SDK_INT >= 26) {
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(NotificationChannel("cc", "Control Center", NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel("cc", "Trung tâm điều khiển", NotificationManager.IMPORTANCE_LOW))
         }
         val n = if (Build.VERSION.SDK_INT >= 26)
             Notification.Builder(this, "cc").setSmallIcon(android.R.drawable.ic_menu_more).setContentTitle("Lite Launcher").setContentText("Vuốt từ mép trên xuống để mở Trung tâm điều khiển").setOngoing(true).build()
-        else Notification.Builder(this).setSmallIcon(android.R.drawable.ic_menu_more).setContentTitle("Lite Launcher").setContentText("Control Center").setOngoing(true).build()
+        else Notification.Builder(this).setSmallIcon(android.R.drawable.ic_menu_more).setContentTitle("Lite Launcher").setContentText("Trung tâm điều khiển").setOngoing(true).build()
         if (Build.VERSION.SDK_INT >= 29) startForeground(4101, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(4101, n)
     }

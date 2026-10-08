@@ -19,7 +19,16 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** MIUI 14-inspired quick settings panel, shared by the launcher and global overlay. */
+data class ControlCenterSkin(val name: String, val panel: Int, val tile: Int, val accent: Int, val primary: Int, val secondary: Int, val scrim: Int)
+val CONTROL_CENTER_SKINS = listOf(
+    ControlCenterSkin("Đêm than", Color.rgb(25, 27, 32), Color.rgb(53, 56, 63), Color.rgb(22, 133, 248), Color.WHITE, 0xFFD4D7DE.toInt(), 142),
+    ControlCenterSkin("Đại dương", Color.rgb(13, 35, 52), Color.rgb(27, 66, 84), Color.rgb(0, 190, 215), Color.WHITE, 0xFFD1E8EF.toInt(), 150),
+    ControlCenterSkin("Tím cực quang", Color.rgb(35, 24, 51), Color.rgb(66, 46, 83), Color.rgb(177, 105, 255), Color.WHITE, 0xFFE2D5EF.toInt(), 150),
+    ControlCenterSkin("Rừng ngọc", Color.rgb(19, 39, 34), Color.rgb(39, 69, 57), Color.rgb(39, 183, 125), Color.WHITE, 0xFFD2E7DA.toInt(), 150),
+    ControlCenterSkin("Sương sáng", Color.rgb(229, 234, 243), Color.rgb(205, 214, 229), Color.rgb(54, 111, 211), Color.rgb(27, 37, 54), Color.rgb(76, 89, 110), 90)
+)
+
+/** Trung tâm điều khiển dùng chung cho màn hình chính và lớp phủ toàn hệ thống. */
 class ControlCenter(private val a: Context) : FrameLayout(a) {
     var onClean: () -> Unit = {}
     var onLaunch: (App) -> Unit = {}
@@ -30,6 +39,8 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
     private var torchOn = false
     private var cam: String? = null
     private val audio by lazy { a.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    private val skin: ControlCenterSkin
+        get() = CONTROL_CENTER_SKINS[a.getSharedPreferences("launcher", 0).getInt("controlCenterSkin", 0).coerceIn(0, CONTROL_CENTER_SKINS.lastIndex)]
     val isOpen get() = visibility == View.VISIBLE
     private var downX = 0f
     private var downY = 0f
@@ -39,15 +50,15 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
     private fun launch(i: Intent) { i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); a.startActivity(i) }
     private fun go(action: String) = launch(Intent(action))
     private fun surface(color: Int, r: Int = 24) = GradientDrawable().apply {
-        setColor(color); setStroke(dp(1), Color.argb(22, 255, 255, 255)); cornerRadius = radius(r)
+        setColor(color); setStroke(dp(1), Color.argb(30, Color.red(skin.primary), Color.green(skin.primary), Color.blue(skin.primary))); cornerRadius = radius(r)
     }
 
     init {
         visibility = View.GONE
         isClickable = true
-        setBackgroundColor(Color.argb(142, 0, 0, 0))
+        setBackgroundColor(Color.argb(skin.scrim, 0, 0, 0))
         setOnClickListener { requestClose() }
-        panel.background = surface(Color.rgb(25, 27, 32), 30)
+        panel.background = surface(skin.panel, 30)
         panel.elevation = dp(18).toFloat()
         val scroll = ScrollView(a).apply {
             isFillViewport = false
@@ -92,7 +103,7 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
         if (callback != null) callback() else close()
     }
 
-    private fun label(t: String, sp: Float = 12f, color: Int = Color.WHITE) = TextView(a).apply {
+    private fun label(t: String, sp: Float = 12f, color: Int = skin.primary) = TextView(a).apply {
         text = t; setTextColor(color); textSize = sp
     }
 
@@ -103,18 +114,18 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
             addView(label(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()), 34f).apply {
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
             })
-            addView(label(SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(Date()), 13f, 0xFFB8BBC3.toInt()))
+            addView(label(SimpleDateFormat("EEEE, d MMMM", Locale("vi", "VN")).format(Date()), 13f, skin.secondary))
         }, LinearLayout.LayoutParams(0, -2, 1f))
         addView(TextView(a).apply {
             text = "⚙"; textSize = 21f; gravity = Gravity.CENTER
-            setTextColor(Color.WHITE); background = surface(Color.argb(36, 255, 255, 255), 20)
-            contentDescription = "Settings"
+            setTextColor(skin.primary); background = surface(if (skin.primary == Color.WHITE) Color.argb(36, 255, 255, 255) else Color.argb(120, 255, 255, 255), 20)
+            contentDescription = "Cài đặt"
             setOnClickListener { go(Settings.ACTION_SETTINGS) }
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
         addView(TextView(a).apply {
             text = "×"; textSize = 28f; gravity = Gravity.CENTER
-            setTextColor(Color.WHITE); background = surface(Color.argb(36, 255, 255, 255), 20)
-            contentDescription = "Close Control Center"
+            setTextColor(skin.primary); background = surface(if (skin.primary == Color.WHITE) Color.argb(36, 255, 255, 255) else Color.argb(120, 255, 255, 255), 20)
+            contentDescription = "Đóng Trung tâm điều khiển"
             setOnClickListener { requestClose() }
         }, LinearLayout.LayoutParams(dp(48), dp(48)).apply { leftMargin = dp(8) })
     }
@@ -124,15 +135,15 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(10), dp(10), dp(10))
-            background = surface(if (active) 0xFF1685F8.toInt() else 0xFF35383F.toInt(), 24)
+            background = surface(if (active) skin.accent else skin.tile, 24)
             addView(TextView(a).apply {
                 text = icon; textSize = 24f; gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
+                setTextColor(if (active) Color.WHITE else skin.primary)
             }, LinearLayout.LayoutParams(dp(38), dp(42)))
             addView(LinearLayout(a).apply {
                 orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL
-                addView(label(title, 13f))
-                if (detail.isNotBlank()) addView(label(detail, 10f, 0xFFD4D7DE.toInt()))
+                addView(label(title, 13f, if (active) Color.WHITE else skin.primary))
+                if (detail.isNotBlank()) addView(label(detail, 10f, if (active) Color.WHITE else skin.secondary))
             }, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(8) })
             isClickable = true
             setOnClickListener { try { click() } catch (_: Exception) {} }
@@ -141,9 +152,9 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
     private fun quick(icon: String, title: String, active: Boolean = false, click: () -> Unit) =
         LinearLayout(a).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
-            background = surface(if (active) 0xFF1685F8.toInt() else 0xFF35383F.toInt(), 22)
-            addView(label(icon, 21f).apply { gravity = Gravity.CENTER })
-            addView(label(title, 10f, 0xFFE5E6E9.toInt()).apply {
+            background = surface(if (active) skin.accent else skin.tile, 22)
+            addView(label(icon, 21f, if (active) Color.WHITE else skin.primary).apply { gravity = Gravity.CENTER })
+            addView(label(title, 10f, if (active) Color.WHITE else skin.secondary).apply {
                 gravity = Gravity.CENTER; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(dp(3), dp(3), dp(3), 0)
             })
@@ -170,15 +181,15 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
         LinearLayout(a).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
             setPadding(dp(4), dp(10), dp(4), dp(10))
-            background = surface(0xFF35383F.toInt(), 26)
+            background = surface(skin.tile, 26)
             addView(label(title, 17f).apply { gravity = Gravity.CENTER })
             val holder = FrameLayout(a)
             val seek = SeekBar(a).apply {
                 this.max = max.coerceAtLeast(1); this.progress = progress.coerceIn(0, this.max)
                 rotation = -90f
-                progressTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0xFF737780.toInt())
-                thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                progressTintList = android.content.res.ColorStateList.valueOf(skin.accent)
+                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(skin.secondary)
+                thumbTintList = android.content.res.ColorStateList.valueOf(skin.accent)
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar, value: Int, fromUser: Boolean) { if (fromUser) onChange(value) }
                     override fun onStartTrackingTouch(seekBar: SeekBar) { onStart() }
@@ -193,13 +204,13 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
         LinearLayout(a).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(2), dp(14), dp(2))
-            background = surface(0xFF35383F.toInt(), 22)
+            background = surface(skin.tile, 22)
             addView(label(title, 18f), LinearLayout.LayoutParams(dp(34), -2))
             addView(SeekBar(a).apply {
                 this.max = max.coerceAtLeast(1); this.progress = progress.coerceIn(0, this.max)
-                progressTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0xFF737780.toInt())
-                thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                progressTintList = android.content.res.ColorStateList.valueOf(skin.accent)
+                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(skin.secondary)
+                thumbTintList = android.content.res.ColorStateList.valueOf(skin.accent)
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar, value: Int, fromUser: Boolean) { if (fromUser) onChange(value) }
                     override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
@@ -224,16 +235,23 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
 
     fun refreshRam() { ramTv?.text = ramInfo() }
 
+    fun refreshSkin() {
+        setBackgroundColor(Color.argb(skin.scrim, 0, 0, 0))
+        panel.background = surface(skin.panel, 30)
+    }
+
     fun open(recents: List<App>, st: Style?, lite: Boolean, topInset: Int, usageOk: Boolean) {
+        setBackgroundColor(Color.argb(skin.scrim, 0, 0, 0))
+        panel.background = surface(skin.panel, 30)
         panel.removeAllViews()
         panel.setPadding(dp(16), topInset + dp(12), dp(16), dp(14))
         panel.addView(header(), LinearLayout.LayoutParams(-1, dp(70)).apply { bottomMargin = dp(8) })
 
         val left = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL }
-        left.addView(tile("◉", "Wi-Fi", if (wifiEnabled()) "On · tap for networks" else "Off · tap for networks", wifiEnabled()) {
+        left.addView(tile("◉", "Wi-Fi", if (wifiEnabled()) "Đang bật · chạm để xem mạng" else "Đang tắt · chạm để xem mạng", wifiEnabled()) {
             openInternetSettings()
         }, LinearLayout.LayoutParams(-1, dp(88)).apply { bottomMargin = dp(7) })
-        left.addView(tile("▰", "Mobile data", "Network settings") {
+        left.addView(tile("▰", "Dữ liệu di động", "Cài đặt mạng") {
             openInternetSettings()
         }, LinearLayout.LayoutParams(-1, dp(88)))
 
@@ -254,16 +272,16 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
         val quickGrid = LinearLayout(a).apply {
             orientation = LinearLayout.VERTICAL; setPadding(0, dp(7), 0, dp(2))
             addView(tileRow(
-                quick("ϟ", "Flashlight", torchOn) { toggleTorch() },
+                quick("ϟ", "Đèn pin", torchOn) { toggleTorch() },
                 quick("ᛒ", "Bluetooth") { go(Settings.ACTION_BLUETOOTH_SETTINGS) },
-                quick("✈", "Airplane") { go(Settings.ACTION_AIRPLANE_MODE_SETTINGS) }
+                quick("✈", "Máy bay") { go(Settings.ACTION_AIRPLANE_MODE_SETTINGS) }
             ))
             addView(tileRow(
-                quick("◖", "Silent", ringer != AudioManager.RINGER_MODE_NORMAL) {
+                quick("◖", "Im lặng", ringer != AudioManager.RINGER_MODE_NORMAL) {
                     audio.ringerMode = if (audio.ringerMode == AudioManager.RINGER_MODE_NORMAL) AudioManager.RINGER_MODE_SILENT else AudioManager.RINGER_MODE_NORMAL
                 },
-                quick("⌖", "Location") { go(Settings.ACTION_LOCATION_SOURCE_SETTINGS) },
-                quick("◐", "Display") { go(Settings.ACTION_DISPLAY_SETTINGS) }
+                quick("⌖", "Vị trí") { go(Settings.ACTION_LOCATION_SOURCE_SETTINGS) },
+                quick("◐", "Màn hình") { go(Settings.ACTION_DISPLAY_SETTINGS) }
             ))
         }
         panel.addView(quickGrid)
@@ -273,7 +291,7 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
         }, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(8) })
 
         if (st != null && recents.isNotEmpty()) {
-            panel.addView(label("Recent apps", 11f, 0xFFB8BBC3.toInt()).apply {
+            panel.addView(label("Ứng dụng gần đây", 11f, skin.secondary).apply {
                 setPadding(dp(6), dp(13), 0, dp(5))
             })
             panel.addView(HorizontalScrollView(a).apply {

@@ -8,6 +8,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 
+data class SidebarSkin(val name: String, val base: Int, val accent: Int, val tile: Int, val lightText: Boolean)
+val SIDEBAR_SKINS = listOf(
+    SidebarSkin("Đêm xanh", Color.rgb(18, 22, 34), Color.rgb(145, 190, 255), Color.WHITE, false),
+    SidebarSkin("Tím cực quang", Color.rgb(35, 22, 55), Color.rgb(210, 159, 255), Color.WHITE, false),
+    SidebarSkin("Đại dương", Color.rgb(12, 39, 56), Color.rgb(92, 220, 235), Color.WHITE, false),
+    SidebarSkin("Rừng ngọc", Color.rgb(18, 43, 38), Color.rgb(119, 231, 177), Color.WHITE, false),
+    SidebarSkin("Sương sáng", Color.rgb(229, 236, 248), Color.rgb(65, 105, 190), Color.rgb(20, 32, 55), true)
+)
+
 /**
  * Thanh bên thông minh lấy cảm hứng từ Edge Panel / Magic Sidebar.
  * Chỉ dùng View chuẩn, không phụ thuộc Compose hay thư viện nặng.
@@ -27,6 +36,8 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
     private var open = false
     private var downX = 0f
     private var tracking = false
+    private val skin: SidebarSkin
+        get() = SIDEBAR_SKINS[a.getSharedPreferences("launcher", 0).getInt("sidebarSkin", 0).coerceIn(0, SIDEBAR_SKINS.lastIndex)]
 
     private fun dp(v: Int) = (v * d + .5f).toInt()
 
@@ -40,12 +51,12 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
         handle.gravity = Gravity.CENTER
         handle.textSize = 22f
         handle.setTextColor(Color.WHITE)
-        handle.background = glass(220, 30f)
+        handle.background = glass(230, 30f)
         handle.elevation = dp(8).toFloat()
 
         panel.orientation = LinearLayout.VERTICAL
-        panel.setPadding(dp(14), dp(16), dp(14), dp(14))
-        panel.background = glass(238, 28f)
+        panel.setPadding(dp(16), dp(18), dp(16), dp(14))
+        panel.background = glass(246, 30f)
         panel.elevation = dp(14).toFloat()
 
         addView(panel, LayoutParams(dp(318), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END).apply {
@@ -70,8 +81,8 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
     }
 
     private fun glass(alpha: Int, radius: Float) = GradientDrawable().apply {
-        setColor(Color.argb(alpha, 25, 27, 33))
-        setStroke(dp(1), Color.argb(55, 255, 255, 255))
+        setColor(Color.argb(alpha, Color.red(skin.base), Color.green(skin.base), Color.blue(skin.base)))
+        setStroke(dp(1), Color.argb(90, Color.red(skin.accent), Color.green(skin.accent), Color.blue(skin.accent)))
         cornerRadius = dp(radius.toInt()).toFloat()
     }
 
@@ -80,23 +91,24 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             isClickable = true
-            setPadding(dp(12), dp(8), dp(10), dp(8))
+            setPadding(dp(10), dp(7), dp(10), dp(7))
             background = GradientDrawable().apply {
-                setColor(Color.argb(34, 255, 255, 255))
-                cornerRadius = dp(16).toFloat()
+                val c = skin.tile
+                setColor(Color.argb(if (skin.lightText) 48 else 25, Color.red(c), Color.green(c), Color.blue(c)))
+                setStroke(dp(1), Color.argb(30, Color.red(skin.accent), Color.green(skin.accent), Color.blue(skin.accent)))
+                cornerRadius = dp(18).toFloat()
             }
-            addView(TextView(a).apply {
-                text = icon; textSize = 21f; gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(42), dp(50)))
+            addView(MenuGlyphView(a, icon), LinearLayout.LayoutParams(dp(42), dp(42)))
             addView(LinearLayout(a).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(a).apply {
-                    text = title; textSize = 14f; setTextColor(Color.WHITE)
+                    text = title; textSize = 14f; setTextColor(if (skin.lightText) Color.rgb(26, 37, 58) else Color.WHITE)
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
                 })
                 addView(TextView(a).apply {
                     text = sub; textSize = 10f
-                    setTextColor(Color.argb(155, 255, 255, 255))
+                    setTextColor(if (skin.lightText) Color.rgb(83, 96, 119) else Color.argb(175, 255, 255, 255))
                     maxLines = 1
                 })
             }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -155,6 +167,12 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
 
     fun isOpen() = open
 
+    fun refreshStyle() {
+        handle.background = glass(230, 30f)
+        panel.background = glass(246, 30f)
+        if (open) build()
+    }
+
     private fun edgeTouch(e: MotionEvent): Boolean {
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -176,26 +194,33 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
 
     private fun build() {
         panel.removeAllViews()
-        panel.addView(TextView(a).apply {
-            text = "Thanh bên thông minh"
-            textSize = 22f
-            setTextColor(Color.WHITE)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-            setPadding(dp(4), 0, dp(4), dp(3))
-        })
-        panel.addView(TextView(a).apply {
-            text = "Edge Panel • Magic Sidebar"
-            textSize = 11f
-            setTextColor(Color.argb(150, 255, 255, 255))
-            setPadding(dp(4), 0, dp(4), dp(12))
+        panel.addView(LinearLayout(a).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(5), dp(2), dp(5), dp(15))
+            addView(TextView(a).apply {
+                text = "L I T E   •   QUICK TOOLS"
+                textSize = 10f; setTextColor(skin.accent)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            })
+            addView(TextView(a).apply {
+                text = "Thanh bên thông minh"
+                textSize = 21f; setTextColor(if (skin.lightText) Color.rgb(26, 37, 58) else Color.WHITE)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                setPadding(0, dp(5), 0, dp(3))
+            })
+            addView(TextView(a).apply {
+                text = "Lối tắt và công cụ của bạn"
+                textSize = 12f; setTextColor(if (skin.lightText) Color.rgb(83, 96, 119) else Color.argb(190, 225, 232, 247))
+            })
         })
 
         val recent = appsProvider().distinctBy { it.pkg }.take(6)
         if (recent.isNotEmpty()) {
             panel.addView(TextView(a).apply {
-                text = "Ứng dụng nhanh"
-                textSize = 13f; setTextColor(Color.WHITE)
-                setPadding(dp(4), dp(4), dp(4), dp(6))
+                text = "ỨNG DỤNG GẦN ĐÂY"
+                textSize = 10f; setTextColor(skin.accent)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                setPadding(dp(5), dp(4), dp(4), dp(6))
             })
             panel.addView(HorizontalScrollView(a).apply {
                 isHorizontalScrollBarEnabled = false
@@ -204,10 +229,15 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
                         addView(LinearLayout(a).apply {
                             orientation = LinearLayout.VERTICAL
                             gravity = Gravity.CENTER
-                            addView(IconView(a, a.currentStyle(), true, a.isLiteMode()).apply {
+                            addView(IconView(a, a.currentStyle(), false, a.isLiteMode()).apply {
                                 set(app.icon, app.label)
                                 setOnClickListener { onLaunch(app) }
-                            }, LinearLayout.LayoutParams(dp(72), dp(72)))
+                            }, LinearLayout.LayoutParams(dp(52), dp(52)))
+                            addView(TextView(a).apply {
+                                text = app.label; textSize = 9f; gravity = Gravity.CENTER
+                                setTextColor(if (skin.lightText) Color.rgb(45, 57, 79) else Color.WHITE)
+                                maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+                            }, LinearLayout.LayoutParams(dp(72), dp(20)))
                         }, LinearLayout.LayoutParams(dp(76), dp(92)))
                     }
                 })
@@ -215,21 +245,21 @@ class OemSidebar(private val a: MainActivity) : FrameLayout(a) {
         }
 
         panel.addView(Space(a), LinearLayout.LayoutParams(1, dp(8)))
-        panel.addView(row("🔎", "Tìm kiếm", "Mở tìm kiếm ứng dụng") { onSearch(); close() },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
-        panel.addView(row("🎛️", "Trung tâm điều khiển", "Wi‑Fi, Bluetooth, sáng, âm lượng") { onControlCenter(); close() },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
-        panel.addView(row("🎮", "Game Booster", "Công cụ nổi khi chơi game") { onGameBooster(); close() },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
-        panel.addView(row("⚡", "Dọn RAM", "Dọn các tiến trình nền không cần thiết") { onClean() },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
-        panel.addView(row("🌄", "Hình nền", "Đổi hình nền hệ thống") { onWallpaper(); close() },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(66)).apply { bottomMargin = dp(7) })
+        panel.addView(row("search", "Tìm kiếm", "Mở tìm kiếm ứng dụng") { onSearch(); close() },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(62)).apply { bottomMargin = dp(8) })
+        panel.addView(row("control", "Trung tâm điều khiển", "Wi‑Fi, Bluetooth, sáng, âm lượng") { onControlCenter(); close() },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(62)).apply { bottomMargin = dp(8) })
+        panel.addView(row("game", "Game Booster", "Công cụ nổi khi chơi game") { onGameBooster(); close() },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(62)).apply { bottomMargin = dp(8) })
+        panel.addView(row("clean", "Dọn RAM", "Dọn tiến trình nền không cần thiết") { onClean() },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(62)).apply { bottomMargin = dp(8) })
+        panel.addView(row("wallpaper", "Hình nền", "Đổi hình nền hệ thống") { onWallpaper(); close() },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(62)).apply { bottomMargin = dp(8) })
 
         panel.addView(TextView(a).apply {
             text = "Vuốt từ mép phải sang trái để mở • Vuốt panel sang phải để đóng"
             textSize = 10f
-            setTextColor(Color.argb(130, 255, 255, 255))
+            setTextColor(if (skin.lightText) Color.rgb(83, 96, 119) else Color.argb(150, 255, 255, 255))
             gravity = Gravity.CENTER
             setPadding(dp(4), dp(14), dp(4), 0)
         })

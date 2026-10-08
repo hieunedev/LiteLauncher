@@ -33,9 +33,18 @@ class IslandService : NotificationListenerService() {
     private var curSbn: StatusBarNotification? = null
     private val live = setOf("call", "transport", "alarm", "msg", "navigation", "progress", "stopwatch", "reminder", "service", "status", "event")
     private val collapse = Runnable { collapseNow() }
+    private val islandPrefs by lazy { getSharedPreferences("launcher", 0) }
+    private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "islandYOffset") ui.post { updatePosition() }
+    }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density + .5f).toInt()
     private fun enabled() = getSharedPreferences("launcher", 0).getBoolean("island", false) && Settings.canDrawOverlays(this)
+
+    override fun onCreate() {
+        super.onCreate()
+        islandPrefs.registerOnSharedPreferenceChangeListener(prefListener)
+    }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -69,7 +78,17 @@ class IslandService : NotificationListenerService() {
     }
 
     override fun onListenerDisconnected() { ui.post { hide() } }
-    override fun onDestroy() { hide(); super.onDestroy() }
+    override fun onDestroy() {
+        islandPrefs.unregisterOnSharedPreferenceChangeListener(prefListener)
+        hide(); super.onDestroy()
+    }
+
+    private fun updatePosition() {
+        val view = box ?: return
+        val params = view.layoutParams as? WindowManager.LayoutParams ?: return
+        params.y = dp(islandPrefs.getInt("islandYOffset", 2).coerceIn(2, 122))
+        try { wm?.updateViewLayout(view, params) } catch (_: Exception) {}
+    }
 
     private fun ensure(): LinearLayout {
         box?.let { return it }
@@ -94,7 +113,10 @@ class IslandService : NotificationListenerService() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; y = dp(2) } // capsule ôm camera giọt nước
+        ).apply {
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            y = dp(islandPrefs.getInt("islandYOffset", 2).coerceIn(2, 122))
+        }
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         try { wm?.addView(b, lp) } catch (e: Exception) { return b }
         box = b

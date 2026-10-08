@@ -23,6 +23,7 @@ import java.util.Locale
 class ControlCenter(private val a: Context) : FrameLayout(a) {
     var onClean: () -> Unit = {}
     var onLaunch: (App) -> Unit = {}
+    var onCloseRequested: (() -> Unit)? = null
     private val d = a.resources.displayMetrics.density
     private val panel = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; isClickable = true }
     private var ramTv: TextView? = null
@@ -30,6 +31,9 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
     private var cam: String? = null
     private val audio by lazy { a.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val isOpen get() = visibility == View.VISIBLE
+    private var downX = 0f
+    private var downY = 0f
+    private var interceptingCloseSwipe = false
 
     private fun dp(v: Int) = (v * d + .5f).toInt()
     private fun radius(v: Int) = v * d
@@ -43,7 +47,7 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
         visibility = View.GONE
         isClickable = true
         setBackgroundColor(Color.argb(142, 0, 0, 0))
-        setOnClickListener { close() }
+        setOnClickListener { requestClose() }
         panel.background = surface(Color.rgb(25, 27, 32), 30)
         panel.elevation = dp(18).toFloat()
         val scroll = ScrollView(a).apply {
@@ -55,6 +59,46 @@ class ControlCenter(private val a: Context) : FrameLayout(a) {
         addView(scroll, LayoutParams(-1, -1).apply {
             leftMargin = dp(10); rightMargin = dp(10); topMargin = dp(8); bottomMargin = dp(8)
         })
+    }
+
+    override fun onInterceptTouchEvent(event: android.view.MotionEvent): Boolean {
+        when (event.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
+                interceptingCloseSwipe = false
+            }
+            android.view.MotionEvent.ACTION_MOVE -> {
+                val dx = event.x - downX
+                val dy = event.y - downY
+                if (dy < -dp(72) && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.2f) {
+                    interceptingCloseSwipe = true
+                    return true
+                }
+            }
+            android.view.MotionEvent.ACTION_CANCEL -> interceptingCloseSwipe = false
+        }
+        return interceptingCloseSwipe
+    }
+
+    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+        when (event.actionMasked) {
+            android.view.MotionEvent.ACTION_UP -> {
+                if (interceptingCloseSwipe) requestClose()
+                interceptingCloseSwipe = false
+                return true
+            }
+            android.view.MotionEvent.ACTION_CANCEL -> {
+                interceptingCloseSwipe = false
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
+    private fun requestClose() {
+        val callback = onCloseRequested
+        if (callback != null) callback() else close()
     }
 
     private fun label(t: String, sp: Float = 12f, color: Int = Color.WHITE) = TextView(a).apply {

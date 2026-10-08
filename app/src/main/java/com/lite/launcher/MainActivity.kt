@@ -639,28 +639,37 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             isClickable = true
-            setPadding(dp(14), dp(10), dp(12), dp(10))
-            background = GradientDrawable().apply {
-                setColor(Color.argb(32, 255, 255, 255))
-                cornerRadius = dp(16).toFloat()
-            }
+            setPadding(dp(10), dp(7), dp(12), dp(7))
+            background = android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(Color.argb(34, 255, 255, 255)),
+                GradientDrawable().apply {
+                    setColor(Color.argb(24, 255, 255, 255))
+                    cornerRadius = dp(18).toFloat()
+                }, null
+            )
             addView(TextView(this@MainActivity).apply {
                 text = icon
-                textSize = 21f
+                textSize = 19f
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(40), dp(48)))
+                background = GradientDrawable().apply {
+                    setColor(Color.argb(34, 116, 167, 255))
+                    cornerRadius = dp(14).toFloat()
+                }
+            }, LinearLayout.LayoutParams(dp(42), dp(42)).apply { rightMargin = dp(12) })
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
                 addView(TextView(this@MainActivity).apply {
                     text = title
-                    textSize = 15f
+                    textSize = 14f
                     setTextColor(Color.WHITE)
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
                 })
                 addView(TextView(this@MainActivity).apply {
                     text = sub
                     textSize = 11f
-                    setTextColor(Color.argb(165, 255, 255, 255))
+                    setTextColor(Color.argb(155, 221, 229, 242))
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
                 })
@@ -672,34 +681,76 @@ class MainActivity : Activity() {
         val dialog = Dialog(this)
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(14), dp(14), dp(12))
+            setPadding(dp(18), dp(12), dp(18), dp(22))
             background = GradientDrawable().apply {
-                setColor(Color.argb(238, 28, 29, 34))
-                setStroke(dp(1), Color.argb(55, 255, 255, 255))
-                cornerRadius = dp(26).toFloat()
+                setColor(Color.rgb(20, 25, 34))
+                setStroke(dp(1), Color.argb(32, 255, 255, 255))
+                cornerRadius = dp(30).toFloat()
             }
         }
 
-        box.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(6), dp(2), dp(6), dp(10))
-            addView(TextView(this@MainActivity).apply {
-                text = "Lite Launcher"
-                textSize = 23f
-                setTextColor(Color.WHITE)
-                typeface = Typeface.DEFAULT_BOLD
-            })
-            addView(TextView(this@MainActivity).apply {
-                text = "Trung tâm điều khiển"
-                textSize = 12f
-                setTextColor(Color.argb(165, 255, 255, 255))
-            })
+        box.addView(View(this).apply {
+            background = GradientDrawable().apply {
+                setColor(Color.argb(105, 220, 230, 245))
+                cornerRadius = dp(3).toFloat()
+            }
+        }, LinearLayout.LayoutParams(dp(38), dp(5)).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+            bottomMargin = dp(14)
         })
 
-        val rows = listOf(
+        box.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(4), 0, 0, dp(12))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(TextView(this@MainActivity).apply {
+                    text = "Lite Launcher"
+                    textSize = 21f
+                    setTextColor(Color.WHITE)
+                    typeface = Typeface.DEFAULT_BOLD
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = "Tùy chỉnh màn hình chính"
+                    textSize = 12f
+                    setTextColor(Color.argb(155, 221, 229, 242))
+                })
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(TextView(this@MainActivity).apply {
+                text = "×"
+                textSize = 25f
+                gravity = Gravity.CENTER
+                setTextColor(Color.argb(220, 255, 255, 255))
+                background = GradientDrawable().apply {
+                    setColor(Color.argb(30, 255, 255, 255))
+                    cornerRadius = dp(16).toFloat()
+                }
+                isClickable = true
+                setOnClickListener { dialog.dismiss() }
+            }, LinearLayout.LayoutParams(dp(42), dp(42)))
+        })
+
+        fun section(title: String, rows: List<View>) {
+            box.addView(TextView(this).apply {
+                text = title.uppercase(java.util.Locale.getDefault())
+                textSize = 10f
+                letterSpacing = .08f
+                setTextColor(Color.argb(145, 179, 199, 230))
+                setPadding(dp(4), dp(8), 0, dp(7))
+            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+            rows.forEach { row ->
+                box.addView(row, LinearLayout.LayoutParams(-1, dp(62)).apply { bottomMargin = dp(6) })
+            }
+        }
+
+        section("Ứng dụng", listOf(
             menuRow("📱", "Ngăn ứng dụng", "Mở danh sách tất cả ứng dụng") { dialog.dismiss(); openDrawer(false) },
             menuRow("🎮", "Game Booster", "Thanh công cụ nổi khi chơi game") { dialog.dismiss(); openGameBooster() },
-            menuRow("🧩", "Thêm widget", "Thêm tiện ích vào màn hình chính") { dialog.dismiss(); pickWidget() },
+            menuRow("🧩", "Thêm widget", "Thêm tiện ích vào màn hình chính") { dialog.dismiss(); pickWidget() }
+        ))
+
+        section("Giao diện", listOf(
             menuRow("🎨", "Cá nhân hóa", "Biểu tượng, chữ, đồng hồ, dock") { dialog.dismiss(); showPersonalization() },
             menuRow("🖼️", "Kiểu giao diện", st.name) {
                 dialog.dismiss()
@@ -715,6 +766,24 @@ class MainActivity : Activity() {
                 dialog.dismiss()
                 toast(if (drawerMode) "Đã bật Ngăn kéo" else "Đã về chế độ Chuẩn")
             },
+            menuRow("🪄", "Giao diện thích ứng", "Tự động lấy màu chủ đạo từ hình nền") {
+                prefs.edit().putBoolean("dynamicColor", !prefs.getBoolean("dynamicColor", true)).apply()
+                refreshWallpaperAccent()
+                dialog.dismiss()
+                toast(if (prefs.getBoolean("dynamicColor", true)) "Đã bật màu thích ứng" else "Đã tắt màu thích ứng")
+            },
+            menuRow("⚡", "Siêu nhẹ", if (lite) "Đang bật • giảm bóng & hiệu ứng" else "Đang tắt • hiệu ứng đầy đủ") {
+                lite = !lite
+                prefs.edit().putBoolean("lite", lite).apply()
+                applyStyle(); refresh(); dialog.dismiss()
+            },
+            menuRow("🌄", "Đổi hình nền", "Mở trình chọn hình nền hệ thống") {
+                dialog.dismiss()
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
+            }
+        ))
+
+        section("Tiện ích", listOf(
             menuRow("🎛️", "Trung tâm điều khiển", "Điều khiển nhanh & đa nhiệm") { dialog.dismiss(); openCC() },
             menuRow("🌐", "Trung tâm điều khiển toàn hệ thống", if (prefs.getBoolean("globalControlCenter", false)) "Đang bật • vuốt từ mép trên xuống" else "Đang tắt") {
                 dialog.dismiss()
@@ -727,48 +796,44 @@ class MainActivity : Activity() {
                 dialog.dismiss()
                 toast(if (on) "Đã bật Thanh bên thông minh" else "Đã tắt Thanh bên thông minh")
             },
-            menuRow("🏝️", "Đảo động", islandStatus()) { dialog.dismiss(); toggleIsland() } 
-        )
+            menuRow("🏝️", "Đảo động", islandStatus()) { dialog.dismiss(); toggleIsland() }
+        ))
 
-        rows.forEach { row ->
-            box.addView(row, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
-        }
-
-        box.addView(menuRow("🪄", "Giao diện thích ứng", "Tự động lấy màu chủ đạo từ hình nền") {
-            prefs.edit().putBoolean("dynamicColor", !prefs.getBoolean("dynamicColor", true)).apply()
-            refreshWallpaperAccent()
-            dialog.dismiss()
-            toast(if (prefs.getBoolean("dynamicColor", true)) "Đã bật màu thích ứng" else "Đã tắt màu thích ứng")
-        }, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
-
-        box.addView(menuRow("⚡", "Siêu nhẹ", if (lite) "Đang bật • giảm bóng & hiệu ứng" else "Đang tắt • hiệu ứng đầy đủ") {
-            lite = !lite
-            prefs.edit().putBoolean("lite", lite).apply()
-            applyStyle(); refresh(); dialog.dismiss()
-        }, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
-
-        box.addView(menuRow("🌄", "Đổi hình nền", "Mở trình chọn hình nền hệ thống") {
-            dialog.dismiss()
-            startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Hình nền"))
-        }, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
-
-        box.addView(menuRow("♻️", "Đặt lại bố cục", "Xếp lại ứng dụng về bố cục mặc định") {
-            initLayout(); reflow(); refresh(); dialog.dismiss()
-        }, LinearLayout.LayoutParams(-1, dp(66)).apply { setMargins(0, dp(3), 0, dp(3)) })
+        section("Hệ thống", listOf(
+            menuRow("♻️", "Đặt lại bố cục", "Xếp lại ứng dụng về bố cục mặc định") {
+                initLayout(); reflow(); refresh(); dialog.dismiss()
+            }
+        ))
 
         val scroll = ScrollView(this).apply {
             overScrollMode = View.OVER_SCROLL_NEVER
+            isFillViewport = true
+            clipToPadding = false
             addView(box)
         }
         dialog.setContentView(scroll)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog.window?.setDimAmount(.48f)
+        dialog.window?.setDimAmount(.52f)
         dialog.setOnShowListener {
-            dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            dialog.window?.setLayout((resources.displayMetrics.widthPixels * .88f).toInt(), dp(650))
+            dialog.window?.apply {
+                addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                setGravity(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+                val width = (resources.displayMetrics.widthPixels - dp(24)).coerceAtMost(dp(560))
+                val height = (resources.displayMetrics.heightPixels * .88f).toInt()
+                setLayout(width, height)
+            }
+            box.alpha = 0f
+            box.translationY = dp(26).toFloat()
+            box.animate().alpha(1f).translationY(0f).setDuration(190).start()
         }
+        dialog.setCanceledOnTouchOutside(true)
         dialog.show()
-        dialog.window?.setLayout((resources.displayMetrics.widthPixels * .88f).toInt(), dp(650))
+        dialog.window?.let { window ->
+            val width = (resources.displayMetrics.widthPixels - dp(24)).coerceAtMost(dp(560))
+            val height = (resources.displayMetrics.heightPixels * .88f).toInt()
+            window.setLayout(width, height)
+            window.setGravity(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+        }
     }
 
     private fun showPersonalization() {

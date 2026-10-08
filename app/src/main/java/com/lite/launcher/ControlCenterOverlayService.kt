@@ -53,6 +53,7 @@ class ControlCenterOverlayService : Service() {
         }
         cc = ControlCenter(this).apply {
             onClean = {}
+            onCloseRequested = { hideCenter() }
             onLaunch = { app ->
                 try {
                     startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
